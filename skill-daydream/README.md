@@ -8,16 +8,23 @@ This module provides the Agent with a serendipitous ideation mechanism. It rando
 
 ## Concept
 
-Instead of linear task execution, `skill-daydream` introduces *mutation* into the Agent's thought process. By reading random historical logs, the LLM is prompted with a high-temperature setting to find non-obvious connections.
+Instead of linear task execution, `skill-daydream` introduces *mutation* into the Agent's thought process. By reading random historical logs, the LLM is prompted with a configurable high-temperature setting (default `0.8`) to find non-obvious connections.
+
+*Note: The script automatically filters out `<think>...</think>` chain-of-thought blocks, making it highly compatible with reasoning models (like DeepSeek or MiniMax) without breaking the JSON output schema.*
 
 The resulting "seeds" start with a base `maturity` of `10` and are handed off to the `skill-topic-lab` for nurturing or eventual pruning.
 
 ## Usage
 
 ```bash
+# Standard OpenAI Configuration
 export LLM_API_BASE="https://api.openai.com/v1"
 export LLM_API_KEY="sk-..."
 export LLM_MODEL="gpt-4o"
+
+# Optional: Multi-Provider & Generation Settings
+export LLM_API_TYPE="openai"       # Set to "anthropic" for Claude/MiniMax Anthropic endpoints (Auto-detected from API Base)
+export LLM_TEMPERATURE="0.8"       # Adjust creativity (0.6 - 1.2+ for divergent thinking)
 
 python3 scripts/daydream.py --base-dir /path/to/agent/root
 ```
