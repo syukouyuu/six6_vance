@@ -76,7 +76,7 @@ def main():
     parser.add_argument("--api-base", default=os.environ.get("LLM_API_BASE", "https://api.openai.com/v1"), help="OpenAI-compatible API Base URL")
     parser.add_argument("--api-key", default=os.environ.get("LLM_API_KEY", ""), help="API Key")
     parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "gpt-4o"), help="Model to use")
-    parser.add_argument("--temperature", type=float, default=float(os.environ.get("LLM_TEMPERATURE", "0.8")), help="Temperature for generation")
+    parser.add_argument("--temperature", type=float, default=float(os.environ.get("DAYDREAM_TEMPERATURE", "0.8")), help="Temperature for generation")
     parser.add_argument("--api-type", default=os.environ.get("LLM_API_TYPE", ""), help="API Type (openai or anthropic)")
     args = parser.parse_args()
 

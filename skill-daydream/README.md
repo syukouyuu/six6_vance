@@ -24,10 +24,17 @@ export LLM_MODEL="gpt-4o"
 
 # Optional: Multi-Provider & Generation Settings
 export LLM_API_TYPE="openai"       # Set to "anthropic" for Claude/MiniMax Anthropic endpoints (Auto-detected from API Base)
-export LLM_TEMPERATURE="0.8"       # Adjust creativity (0.6 - 1.2+ for divergent thinking)
+export DAYDREAM_TEMPERATURE="0.8"  # Adjust creativity (0.6 - 1.2+ for divergent thinking)
 
 python3 scripts/daydream.py --base-dir /path/to/agent/root
 ```
+
+> [!IMPORTANT]
+> **Configuration Strictness**
+> Please configure the environment variables exactly as shown in the examples above:
+> - **`LLM_API_BASE`**: Pay attention to the trailing path. For OpenAI, include `/v1` (the script appends `/chat/completions`). For Anthropic-compatible endpoints, do **not** include `/v1` (the script automatically appends `/v1/messages`), otherwise it will result in a malformed double `/v1/v1/` URL.
+> - **`LLM_API_TYPE`**: If set manually, it must be strict lowercase (`openai` or `anthropic`).
+> - **`DAYDREAM_TEMPERATURE`**: Must be a valid float string (e.g., `0.8`).
 
 ### Absolute Decoupling Standard
 The JSON object written to `topic-lab-seeds.jsonl` follows this exact schema:
