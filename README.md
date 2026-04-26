@@ -73,6 +73,7 @@ Read the detailed [ARCHITECTURE.md](ARCHITECTURE.md) for data flow specification
    ```
 2. Check the `ARCHITECTURE.md` file to understand the required file structures.
 3. Hook any or all modules into your agent's cron or trigger system.
+   For overnight `nightly` runs, schedule them after midnight if you prefer; the meditation step processes yesterday's memory by default.
 4. Bootstrap a writable base directory:
    ```bash
    python3 runtime/scripts/six6.py init --base-dir /path/to/agent/root
