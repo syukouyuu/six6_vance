@@ -5,6 +5,11 @@ import urllib.request
 import datetime
 import argparse
 
+
+def default_meditation_date():
+    return (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
+
 def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.3):
     # Auto-detect API type if not provided
     if not api_type:
@@ -71,7 +76,7 @@ def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.3):
 def main():
     parser = argparse.ArgumentParser(description="Run nightly meditation to consolidate memory.")
     parser.add_argument("--base-dir", default=".", help="Base directory of the agent.")
-    parser.add_argument("--date", help="Date of the memory to process (YYYY-MM-DD). Defaults to today.", default=datetime.datetime.now().strftime("%Y-%m-%d"))
+    parser.add_argument("--date", help="Date of the memory to process (YYYY-MM-DD). Defaults to yesterday for overnight runs.", default=default_meditation_date())
     parser.add_argument("--api-base", default=os.environ.get("LLM_API_BASE", "https://api.openai.com/v1"), help="OpenAI-compatible API Base URL")
     parser.add_argument("--api-key", default=os.environ.get("LLM_API_KEY", ""), help="API Key")
     parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "gpt-4o"), help="Model to use")
@@ -81,7 +86,7 @@ def main():
 
     if not args.api_key:
         print("❌ Error: API Key is required. Set LLM_API_KEY env var or use --api-key.")
-        return
+        raise SystemExit(1)
 
     mem_path = os.path.join(args.base_dir, "MEMORY.md")
     daily_path = os.path.join(args.base_dir, "memory", f"{args.date}.md")
@@ -89,7 +94,7 @@ def main():
 
     if not os.path.exists(daily_path):
         print(f"⚠️ No daily memory found at {daily_path}. Skipping meditation.")
-        return
+        raise SystemExit(1)
 
     with open(daily_path, "r", encoding="utf-8") as f:
         daily_memory = f.read()
@@ -119,7 +124,7 @@ Task:
     print(f"🧘 Initiating meditation for {args.date} using {args.model}...")
     response = call_llm(args.api_base, args.api_key, args.model, prompt, args.api_type, args.temperature)
     if not response:
-        return
+        raise SystemExit(1)
 
     new_memory_match = re.search(r"<new_memory>\s*(.*?)\s*</new_memory>", response, re.DOTALL | re.IGNORECASE)
     evo_match = re.search(r"<evolution>\s*(.*?)\s*</evolution>", response, re.DOTALL | re.IGNORECASE)
@@ -135,6 +140,14 @@ Task:
         with open(evo_path, "a", encoding="utf-8") as f:
             f.write(f"- **{args.date}**: {evo_text}\n")
         print(f"🌱 Evolution log appended: {evo_text}")
+        return
+
+    if not new_memory_match:
+        print("❌ LLM output did not contain valid <new_memory> tags.")
+        raise SystemExit(1)
+
+    print("❌ LLM output did not contain valid <evolution> tags.")
+    raise SystemExit(1)
 
 if __name__ == "__main__":
     main()

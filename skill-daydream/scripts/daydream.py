@@ -82,20 +82,20 @@ def main():
 
     if not args.api_key:
         print("❌ Error: API Key is required. Set LLM_API_KEY env var or use --api-key.")
-        return
+        raise SystemExit(1)
 
     mem_dir = os.path.join(args.base_dir, "memory")
     seeds_file = os.path.join(args.base_dir, "data", "topic-lab-seeds.jsonl")
 
     if not os.path.exists(mem_dir):
         print(f"⚠️ Memory directory not found at {mem_dir}. Cannot daydream without memories.")
-        return
+        raise SystemExit(1)
 
     # Gather memory files
     all_files = [os.path.join(mem_dir, f) for f in os.listdir(mem_dir) if f.endswith(".md")]
     if not all_files:
         print("⚠️ No memory files found. Cannot daydream.")
-        return
+        raise SystemExit(1)
 
     # Pick 2-3 random memory files
     sample_size = min(random.randint(2, 3), len(all_files))
@@ -140,7 +140,7 @@ Example:
     print(f"☁️ Daydreaming... cross-pollinating {sample_size} memory fragments using {args.model}...")
     response = call_llm(args.api_base, args.api_key, args.model, prompt, args.api_type, args.temperature)
     if not response:
-        return
+        raise SystemExit(1)
 
     # Case-insensitive tag matching and handle extra whitespace
     seed_match = re.search(r"<seed>\s*(.*?)\s*</seed>", response, re.DOTALL | re.IGNORECASE)
@@ -159,8 +159,10 @@ Example:
             print(f"💡 Idea generated and planted in Topic Lab: {seed_data['topic']}")
         except json.JSONDecodeError:
             print("❌ Failed to parse LLM output as JSON.")
+            raise SystemExit(1)
     else:
         print("❌ LLM output did not contain valid <seed> tags.")
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     main()
