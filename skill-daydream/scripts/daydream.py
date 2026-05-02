@@ -42,7 +42,7 @@ def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.8):
 
     req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"), headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=60) as response:
+        with urllib.request.urlopen(req, timeout=180) as response:
             result = json.loads(response.read().decode("utf-8"))
             if api_type == "anthropic":
                 # Handle potential errors in response structure
