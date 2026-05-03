@@ -5,6 +5,12 @@ import datetime
 import subprocess
 import tempfile
 
+
+def log(msg):
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] {msg}", flush=True)
+
+
 def load_seeds(filepath):
     if not os.path.exists(filepath):
         return []
@@ -44,24 +50,22 @@ def plant_seed(seed):
     """Convert a mature seed into a GitHub Issue."""
     title = f"[topic-lab] {seed.get('topic', 'Untitled Seed')}"
     body = f"## 💡 Mature Idea from Topic Lab\n\n**Description:**\n{seed.get('description', '')}\n\n**Source:** {seed.get('source', 'unknown')}\n**Generated:** {seed.get('created_at', 'unknown')}"
-    
-    print(f"🌱 Planting seed '{title}' to GitHub Issue...")
+
+    log(f"🌱 Planting seed '{title}' to GitHub Issue...")
     try:
-        # Assumes `gh` CLI is authenticated and repo is set (or runs in repo context)
-        # Using a dry-run style print for the OS skeleton, but executing the command if possible
         cmd = ["gh", "issue", "create", "--title", title, "--body", body, "--label", "idea"]
         if seed.get("repo"):
             cmd.extend(["--repo", seed["repo"]])
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         issue_url = result.stdout.strip()
-        print("✅ Issue created successfully.")
+        log("✅ Issue created successfully.")
         return True, issue_url
     except FileNotFoundError:
-        print("⚠️ `gh` CLI not found. Skipping issue creation.")
+        log("⚠️ `gh` CLI not found. Skipping issue creation.")
         return False, ""
     except subprocess.CalledProcessError as e:
         stderr = e.stderr if isinstance(e.stderr, str) else e.stderr.decode("utf-8")
-        print(f"❌ Failed to create issue. Error: {stderr}")
+        log(f"❌ Failed to create issue. Error: {stderr}")
         return False, ""
 
 def main():
@@ -73,19 +77,19 @@ def main():
 
     seeds_file = os.path.join(args.base_dir, "data", "topic-lab-seeds.jsonl")
     seeds = load_seeds(seeds_file)
-    
+
     if not seeds:
-        print("🪹 Topic Lab is empty. No seeds to process.")
+        log("🪹 Topic Lab is empty. No seeds to process.")
         return
 
     updated_seeds = []
-    
+
     if args.add_water:
         for seed in seeds:
             if seed.get("id") == args.add_water and seed.get("status", "active") == "active":
                 seed["maturity"] = min(100, seed.get("maturity", 0) + 10)
                 seed["last_event"] = "watered"
-                print(f"💧 Watered seed '{seed.get('topic')}'. Maturity is now {seed['maturity']}.")
+                log(f"💧 Watered seed '{seed.get('topic')}'. Maturity is now {seed['maturity']}.")
                 emit_inbox_event(args.base_dir, {
                     "event": "seed-watered",
                     "seed_id": seed.get("id"),
@@ -97,15 +101,15 @@ def main():
         return
 
     if args.tick:
-        print("⏱️ Running daily tick in Topic Lab...")
+        log("⏱️ Running daily tick in Topic Lab...")
         for seed in seeds:
             status = seed.get("status", "active")
             if status != "active":
                 updated_seeds.append(seed)
                 continue
-            
+
             maturity = seed.get("maturity", 10)
-            
+
             # Check maturity thresholds
             if maturity >= 80:
                 success, issue_url = plant_seed(seed)
@@ -124,7 +128,7 @@ def main():
                 # Apply decay
                 seed["maturity"] = max(0, maturity - 5)
                 if seed["maturity"] <= 20:
-                    print(f"🍂 Seed '{seed.get('topic')}' withered (composted) due to low maturity.")
+                    log(f"🍂 Seed '{seed.get('topic')}' withered (composted) due to low maturity.")
                     seed["status"] = "composted"
                     seed["last_event"] = "composted"
                     emit_inbox_event(args.base_dir, {
@@ -134,11 +138,11 @@ def main():
                         "status": "composted",
                         "msg": f"Seed composted after decay: {seed.get('topic')}",
                     })
-            
+
             updated_seeds.append(seed)
-            
+
         save_seeds(seeds_file, updated_seeds)
-        print("✅ Topic Lab tick complete.")
+        log("✅ Topic Lab tick complete.")
 
 if __name__ == "__main__":
     main()

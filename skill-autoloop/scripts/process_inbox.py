@@ -6,6 +6,11 @@ import datetime
 import tempfile
 
 
+def log(msg):
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] {msg}", flush=True)
+
+
 def repo_root():
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -53,12 +58,12 @@ def dispatch_task(base_dir, item):
     (e.g., cc-task.sh or auto-fixer) depending on the task type.
     """
     task_type = item.get("type", "generic")
-    print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] Dispatching task type: {task_type}")
-    
+    log(f"Dispatching task type: {task_type}")
+
     if task_type == "escalation":
         issue_num = item.get("issue_number")
-        print(f"🚨 Escalation caught for Issue #{issue_num}. Reason: {item.get('reason')}")
-        print("-> Action: Marking with 'needs-decision' for Main Agent (Cerebral Cortex) to handle.")
+        log(f"🚨 Escalation caught for Issue #{issue_num}. Reason: {item.get('reason')}")
+        log("-> Action: Marking with 'needs-decision' for Main Agent (Cerebral Cortex) to handle.")
         try:
             cmd = ["gh", "issue", "edit", str(issue_num), "--add-label", "needs-decision"]
             repo = item.get("repo")
@@ -66,12 +71,12 @@ def dispatch_task(base_dir, item):
                 cmd.extend(["--repo", repo])
             subprocess.run(cmd, check=True, capture_output=True)
         except Exception:
-            print("   (gh CLI not available, skipped label update)")
+            log("   (gh CLI not available, skipped label update)")
         return True
 
     elif task_type == "x-todo":
-        print(f"📝 External Todo received: {item.get('msg')}")
-        print("-> Action: Dispatching to sub-agent worker queue...")
+        log(f"📝 External Todo received: {item.get('msg')}")
+        log("-> Action: Dispatching to sub-agent worker queue...")
         return True
 
     elif task_type == "topic-lab-water":
@@ -81,11 +86,11 @@ def dispatch_task(base_dir, item):
         farm_script = os.path.join(repo_root(), "skill-topic-lab", "scripts", "farm.py")
         cmd = [os.environ.get("PYTHON", "python3"), farm_script, "--base-dir", base_dir, "--add-water", seed_id]
         subprocess.run(cmd, check=True)
-        print(f"💧 Routed watering task back to Topic Lab for seed {seed_id}.")
+        log(f"💧 Routed watering task back to Topic Lab for seed {seed_id}.")
         return True
 
     else:
-        print(f"📥 Generic inbox item: {item.get('msg', str(item))}")
+        log(f"📥 Generic inbox item: {item.get('msg', str(item))}")
         return True
 
 def main():
@@ -95,12 +100,12 @@ def main():
 
     inbox_file = os.path.join(args.base_dir, "data", "inbox.jsonl")
     items = load_inbox(inbox_file)
-    
+
     if not items:
-        print("📭 Inbox is empty. Nothing to process.")
+        log("📭 Inbox is empty. Nothing to process.")
         return
 
-    print(f"📬 Found {len(items)} items in inbox. Processing...")
+    log(f"📬 Found {len(items)} items in inbox. Processing...")
 
     remaining_items = []
     for item in items:
@@ -109,14 +114,14 @@ def main():
         except Exception as exc:
             append_deadletter(args.base_dir, item, str(exc))
             remaining_items.append(item)
-            print(f"❌ Failed to dispatch item: {exc}")
-        print("-" * 40)
+            log(f"❌ Failed to dispatch item: {exc}")
+        log("-" * 40)
 
     save_inbox(inbox_file, remaining_items)
     if remaining_items:
-        print(f"⚠️ Inbox processing complete with {len(remaining_items)} failed item(s) retained.")
+        log(f"⚠️ Inbox processing complete with {len(remaining_items)} failed item(s) retained.")
     else:
-        print("✅ Inbox cleared.")
+        log("✅ Inbox cleared.")
 
 if __name__ == "__main__":
     main()

@@ -5,6 +5,11 @@ import datetime
 import sys
 
 
+def log(msg):
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] {msg}", flush=True)
+
+
 def modules_root():
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -12,19 +17,19 @@ def modules_root():
 def run_module_script(agent_base_dir, module, script_name, extra_args=None):
     script_path = os.path.join(modules_root(), module, "scripts", script_name)
     if not os.path.exists(script_path):
-        print(f"⚠️ Warning: Script {script_path} not found. Skipping.")
+        log(f"⚠️ Warning: Script {script_path} not found. Skipping.")
         return False
 
     cmd = [sys.executable, script_path, "--base-dir", os.path.abspath(agent_base_dir)]
     if extra_args:
         cmd.extend(extra_args)
 
-    print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 🫀 Pulse triggering: {module}/{script_name}")
+    log(f"[pulse] 🫀 Triggering: {module}/{script_name}")
     try:
         subprocess.run(cmd, check=True)
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error running {module}/{script_name}: {e}")
+        log(f"❌ Error running {module}/{script_name}: {e}")
         return False
 
 def main():
@@ -36,7 +41,7 @@ def main():
     pulse = args.pulse_type
     agent_base_dir = args.base_dir
 
-    print(f"=== 💓 Initiating {pulse.upper()} pulse ===")
+    log(f"=== 💓 Initiating {pulse.upper()} pulse ===")
 
     if pulse == "heartbeat":
         # Frequent check (e.g., every 5-10 minutes)
@@ -58,7 +63,7 @@ def main():
         # 1. Daydream
         run_module_script(agent_base_dir, "skill-daydream", "daydream.py")
 
-    print(f"=== 💓 {pulse.upper()} pulse complete ===")
+    log(f"=== 💓 {pulse.upper()} pulse complete ===")
 
 if __name__ == "__main__":
     main()

@@ -2,15 +2,22 @@ import os
 import re
 import json
 import urllib.request
+import urllib.error
 import datetime
+import time
 import argparse
+
+
+def log(msg):
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] {msg}", flush=True)
 
 
 def default_meditation_date():
     return (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
 
 
-def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.3):
+def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.3, max_retries=3):
     # Auto-detect API type if not provided
     if not api_type:
         if "anthropic" in api_base.lower():
@@ -22,8 +29,7 @@ def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.3):
         url = f"{api_base.rstrip('/')}/v1/messages"
         headers = {
             "Content-Type": "application/json",
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01"
+            "Authorization": f"Bearer {api_key}"
         }
         data = {
             "model": model,
@@ -44,34 +50,45 @@ def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.3):
         }
 
     req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"), headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=180) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            if api_type == "anthropic":
-                # Handle potential errors in response structure
-                if "content" not in result:
-                    print(f"Unexpected response structure: {result}")
-                    return None
-                content = "".join([c["text"] for c in result["content"] if c.get("type") == "text"])
-            else:
-                if "choices" not in result or not result["choices"]:
-                    print(f"Unexpected response structure: {result}")
-                    return None
-                content = result["choices"][0]["message"]["content"]
-            
-            # Filter out <think>...</think> blocks (case-insensitive)
-            if content:
-                content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL | re.IGNORECASE).strip()
-            
-            return content
-    except Exception as e:
-        print(f"Error calling LLM ({api_type}): {e}")
-        if hasattr(e, 'read'):
+
+    for attempt in range(1, max_retries + 2):  # attempts: 1..max_retries+1
+        try:
+            with urllib.request.urlopen(req, timeout=180) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                if api_type == "anthropic":
+                    if "content" not in result:
+                        log(f"Unexpected response structure: {result}")
+                        return None
+                    content = "".join([c["text"] for c in result["content"] if c.get("type") == "text"])
+                else:
+                    if "choices" not in result or not result["choices"]:
+                        log(f"Unexpected response structure: {result}")
+                        return None
+                    content = result["choices"][0]["message"]["content"]
+
+                # Filter out <think>...</think> blocks (case-insensitive)
+                if content:
+                    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL | re.IGNORECASE).strip()
+
+                return content
+
+        except urllib.error.HTTPError as e:
+            # 4xx errors: no point retrying (auth failure, bad request, etc.)
+            log(f"❌ HTTP error {e.code} calling LLM ({api_type}): {e.reason}")
             try:
-                print(f"Response details: {e.read().decode('utf-8')}")
-            except:
+                log(f"Response details: {e.read().decode('utf-8')}")
+            except Exception:
                 pass
-        return None
+            return None
+
+        except Exception as e:
+            wait = attempt * 5
+            if attempt <= max_retries:
+                log(f"⚠️ Attempt {attempt}/{max_retries + 1} failed: {type(e).__name__}: {e}. Retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                log(f"❌ All {max_retries + 1} attempts failed. Last error: {type(e).__name__}: {e}")
+                return None
 
 def main():
     parser = argparse.ArgumentParser(description="Run nightly meditation to consolidate memory.")
@@ -85,7 +102,7 @@ def main():
     args = parser.parse_args()
 
     if not args.api_key:
-        print("❌ Error: API Key is required. Set LLM_API_KEY env var or use --api-key.")
+        log("❌ Error: API Key is required. Set LLM_API_KEY env var or use --api-key.")
         raise SystemExit(1)
 
     mem_path = os.path.join(args.base_dir, "MEMORY.md")
@@ -93,7 +110,7 @@ def main():
     evo_path = os.path.join(args.base_dir, "data", "evolution.md")
 
     if not os.path.exists(daily_path):
-        print(f"⚠️ No daily memory found at {daily_path}. Skipping meditation.")
+        log(f"⚠️ No daily memory found at {daily_path}. Skipping meditation.")
         raise SystemExit(1)
 
     with open(daily_path, "r", encoding="utf-8") as f:
@@ -121,9 +138,10 @@ Task:
 3. Output a brief 1-sentence reflection on how you evolved today wrapped in <evolution> tags.
 """
 
-    print(f"🧘 Initiating meditation for {args.date} using {args.model}...")
+    log(f"🧘 Initiating meditation for {args.date} using {args.model}...")
     response = call_llm(args.api_base, args.api_key, args.model, prompt, args.api_type, args.temperature)
     if not response:
+        log("❌ No response from LLM. Aborting.")
         raise SystemExit(1)
 
     new_memory_match = re.search(r"<new_memory>\s*(.*?)\s*</new_memory>", response, re.DOTALL | re.IGNORECASE)
@@ -132,21 +150,23 @@ Task:
     if new_memory_match:
         with open(mem_path, "w", encoding="utf-8") as f:
             f.write(new_memory_match.group(1).strip())
-        print(f"✅ Core MEMORY.md updated.")
-    
+        log("✅ Core MEMORY.md updated.")
+
     if evo_match:
         os.makedirs(os.path.dirname(evo_path), exist_ok=True)
         evo_text = evo_match.group(1).strip()
         with open(evo_path, "a", encoding="utf-8") as f:
             f.write(f"- **{args.date}**: {evo_text}\n")
-        print(f"🌱 Evolution log appended: {evo_text}")
+        log(f"🌱 Evolution log appended: {evo_text}")
         return
 
     if not new_memory_match:
-        print("❌ LLM output did not contain valid <new_memory> tags.")
+        log("❌ LLM output did not contain valid <new_memory> tags.")
+        log(f"Raw LLM output snippet: {response[:500]}")
         raise SystemExit(1)
 
-    print("❌ LLM output did not contain valid <evolution> tags.")
+    log("❌ LLM output did not contain valid <evolution> tags.")
+    log(f"Raw LLM output snippet: {response[:500]}")
     raise SystemExit(1)
 
 if __name__ == "__main__":
