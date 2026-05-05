@@ -37,6 +37,12 @@ This layer is for packaging six6 as an installable OpenClaw skill set.
 
   python3 runtime/scripts/six6.py pulse heartbeat --base-dir /path/to/agent/root
 
+### Nightly pulse
+
+  python3 runtime/scripts/six6.py pulse nightly --base-dir /path/to/agent/root
+
+  The nightly pulse is intended for overnight schedules such as `02:00` and processes yesterday's memory by default.
+
 ### Migrate from clawd
 
   python3 distribution/migrate_from_clawd.py \

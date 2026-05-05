@@ -11,8 +11,9 @@
 # Daily pulse at 08:00
 0 8 * * *    python3 <SIX6_DIR>/runtime/scripts/six6.py pulse daily     --base-dir <BASE_DIR> >> <LOG_DIR>/daily.log 2>&1
 
-# Nightly synthesis at 23:30
-30 23 * * *  python3 <SIX6_DIR>/runtime/scripts/six6.py pulse nightly   --base-dir <BASE_DIR> >> <LOG_DIR>/nightly.log 2>&1
+# Nightly synthesis at 02:00
+# The nightly pulse processes yesterday's memory by default.
+0 2 * * *    python3 <SIX6_DIR>/runtime/scripts/six6.py pulse nightly   --base-dir <BASE_DIR> >> <LOG_DIR>/nightly.log 2>&1
 
 # Idle daydream every 30 minutes
 */30 * * * * python3 <SIX6_DIR>/runtime/scripts/six6.py pulse idle      --base-dir <BASE_DIR> >> <LOG_DIR>/idle.log 2>&1
