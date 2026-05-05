@@ -124,6 +124,26 @@ These two lanes must not be mixed.
 5. Human review is mandatory before FalkorDB ingestion.
 6. Field-level definitions for `topic`, `content`, `candidate_id`, `deprecation_reason`, and final `Memory.id` are governed by `docs/MEMORY_V1_PROTOCOL.md`.
 
+## Logging Strategy
+
+The system uses a standardized "Plan A" logging strategy designed for VPS stability and easy maintenance.
+
+### 1. Daily Rolling Logs
+Each module (meditation, daydream, etc.) manages its own logs via `runtime/scripts/logger_helper.py`.
+- **Path**: `base_dir/log/YYYY-MM-DD_module.log`
+- **Retention**: Keeps 30 days of history by default.
+- **Format**: Standardized `[timestamp] [level] [name] message`.
+
+### 2. Autonomous Logging
+Scripts are designed to be "log-autonomous."
+- They do not rely on shell redirection (`>>`) for primary logging.
+- They capture both `stdout` and `stderr` (via standard Python `logging` integration).
+- They preserve emojis (✅, ❌, 🧘) for quick visual debugging.
+
+### 3. VPS Integration
+- **Crontab**: Can run scripts directly without worrying about log management.
+- **Monitoring**: `StreamHandler` remains active, allowing real-time monitoring via `tail -f` or existing terminal-based observers.
+
 ## Protocol Authority
 
 `ARCHITECTURE.md` defines workflow, file boundaries, and ownership.
