@@ -1,0 +1,256 @@
+[Thu Apr 23 08:49:05 AM JST 2026] === Starting memory save for 2026-04-22 ===
+[Thu Apr 23 08:49:05 AM JST 2026] Fetching channel: channel:1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+[Thu Apr 23 08:49:11 AM JST 2026] Messages found in channel:1474972453351456930
+Processing 100 total messages for 2026-04-22
+Found 57 messages for 2026-04-22
+Saved 57 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-22-raw.md
+[Thu Apr 23 08:49:11 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-22-raw.md ===
+[Thu Apr 23 08:49:11 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-22.md ===
+[Thu Apr 23 09:30:51 AM JST 2026] === Starting memory save for 2026-04-22 ===
+[Thu Apr 23 09:30:51 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+[Thu Apr 23 09:30:57 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-04-22
+Found 51 messages for 2026-04-22
+Saved 51 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-22-raw.md
+[Thu Apr 23 09:30:57 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-22-raw.md ===
+[Thu Apr 23 09:30:57 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-22.md ===
+[Fri Apr 24 08:55:45 AM JST 2026] === Starting memory save for 2026-04-23 ===
+[Fri Apr 24 08:55:45 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+[Fri Apr 24 08:55:52 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-04-23
+Found 82 messages for 2026-04-23
+Saved 82 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-23-raw.md
+[Fri Apr 24 08:55:52 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-23-raw.md ===
+[Fri Apr 24 08:55:52 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-23.md ===
+[Sat Apr 25 03:00:01 AM JST 2026] === Starting memory save for 2026-04-24 ===
+[Sat Apr 25 03:00:01 AM JST 2026] === Starting memory save for 2026-04-24 ===
+[Sat Apr 25 03:00:01 AM JST 2026] Fetching channel: 1474972453351456930
+[Sat Apr 25 03:00:01 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:598668) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Sat Apr 25 03:00:10 AM JST 2026] Messages found in 1474972453351456930
+[Sat Apr 25 03:00:10 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-04-24
+Found 73 messages for 2026-04-24
+Saved 73 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-24-raw.md
+[Sat Apr 25 03:00:10 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-24-raw.md ===
+[Sat Apr 25 03:00:10 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-24-raw.md ===
+[Sat Apr 25 03:00:10 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-24.md ===
+[Sat Apr 25 03:00:10 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-24.md ===
+[Sun Apr 26 03:00:01 AM JST 2026] === Starting memory save for 2026-04-25 ===
+[Sun Apr 26 03:00:01 AM JST 2026] === Starting memory save for 2026-04-25 ===
+[Sun Apr 26 03:00:01 AM JST 2026] Fetching channel: 1474972453351456930
+[Sun Apr 26 03:00:01 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:977560) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Sun Apr 26 03:00:06 AM JST 2026] Messages found in 1474972453351456930
+[Sun Apr 26 03:00:06 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-04-25
+Found 81 messages for 2026-04-25
+Saved 81 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-25-raw.md
+[Sun Apr 26 03:00:06 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-25-raw.md ===
+[Sun Apr 26 03:00:06 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-25-raw.md ===
+[Sun Apr 26 03:00:06 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-25.md ===
+[Sun Apr 26 03:00:06 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-25.md ===
+[Sun Apr 26 01:35:01 PM JST 2026] === Starting memory save for 2026-04-25 ===
+[Sun Apr 26 01:35:01 PM JST 2026] === Starting memory save for 2026-04-25 ===
+[Sun Apr 26 01:35:01 PM JST 2026] Fetching channel: 1474972453351456930
+[Sun Apr 26 01:35:01 PM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:1175419) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Sun Apr 26 01:35:06 PM JST 2026] Messages found in 1474972453351456930
+[Sun Apr 26 01:35:06 PM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-04-25
+Found 77 messages for 2026-04-25
+Saved 77 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-25-raw.md
+[Sun Apr 26 01:35:06 PM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-25-raw.md ===
+[Sun Apr 26 01:35:06 PM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-25-raw.md ===
+[Sun Apr 26 01:35:06 PM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-25.md ===
+[Sun Apr 26 01:35:06 PM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-25.md ===
+[Mon Apr 27 02:30:02 AM JST 2026] === Starting memory save for 2026-04-26 ===
+[Mon Apr 27 02:30:02 AM JST 2026] === Starting memory save for 2026-04-26 ===
+[Mon Apr 27 02:30:02 AM JST 2026] Fetching channel: 1474972453351456930
+[Mon Apr 27 02:30:02 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:1404534) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Mon Apr 27 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+[Mon Apr 27 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-04-26
+Found 84 messages for 2026-04-26
+Saved 84 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-26-raw.md
+[Mon Apr 27 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-26-raw.md ===
+[Mon Apr 27 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-26-raw.md ===
+[Mon Apr 27 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-26.md ===
+[Mon Apr 27 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-26.md ===
+[Tue Apr 28 02:30:01 AM JST 2026] === Starting memory save for 2026-04-27 ===
+[Tue Apr 28 02:30:01 AM JST 2026] === Starting memory save for 2026-04-27 ===
+[Tue Apr 28 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[Tue Apr 28 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:1763726) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Tue Apr 28 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+[Tue Apr 28 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-04-27
+Found 76 messages for 2026-04-27
+Saved 76 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-27-raw.md
+[Tue Apr 28 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-27-raw.md ===
+[Tue Apr 28 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-27-raw.md ===
+[Tue Apr 28 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-27.md ===
+[Tue Apr 28 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-27.md ===
+[Wed Apr 29 02:30:01 AM JST 2026] === Starting memory save for 2026-04-28 ===
+[Wed Apr 29 02:30:01 AM JST 2026] === Starting memory save for 2026-04-28 ===
+[Wed Apr 29 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[Wed Apr 29 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:2186316) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Wed Apr 29 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+[Wed Apr 29 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-04-28
+Found 71 messages for 2026-04-28
+Saved 71 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-28-raw.md
+[Wed Apr 29 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-28-raw.md ===
+[Wed Apr 29 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-28-raw.md ===
+[Wed Apr 29 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-28.md ===
+[Wed Apr 29 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-28.md ===
+[Thu Apr 30 02:30:01 AM JST 2026] === Starting memory save for 2026-04-29 ===
+[Thu Apr 30 02:30:01 AM JST 2026] === Starting memory save for 2026-04-29 ===
+[Thu Apr 30 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[Thu Apr 30 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:2549923) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Thu Apr 30 02:30:06 AM JST 2026] Messages found in 1474972453351456930
+[Thu Apr 30 02:30:06 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-04-29
+Found 22 messages for 2026-04-29
+Saved 22 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-29-raw.md
+[Thu Apr 30 02:30:06 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-29-raw.md ===
+[Thu Apr 30 02:30:06 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-29-raw.md ===
+[Thu Apr 30 02:30:06 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-29.md ===
+[Thu Apr 30 02:30:06 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-29.md ===
+[Fri May  1 02:30:01 AM JST 2026] === Starting memory save for 2026-04-30 ===
+[Fri May  1 02:30:01 AM JST 2026] === Starting memory save for 2026-04-30 ===
+[Fri May  1 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[Fri May  1 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:2891121) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Fri May  1 02:30:08 AM JST 2026] Messages found in 1474972453351456930
+[Fri May  1 02:30:08 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-04-30
+Found 78 messages for 2026-04-30
+Saved 78 messages to /root/.openclaw/workspace/memory/2026/04/2026-04-30-raw.md
+[Fri May  1 02:30:08 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-30-raw.md ===
+[Fri May  1 02:30:08 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/04/2026-04-30-raw.md ===
+[Fri May  1 02:30:08 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-30.md ===
+[Fri May  1 02:30:08 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-04-30.md ===
+[Sat May  2 12:14:33 AM JST 2026] === Starting memory save for 2026-05-01 ===
+[Sat May  2 12:14:33 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+[Sat May  2 12:14:42 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-05-01
+Found 83 messages for 2026-05-01
+Saved 83 messages to /root/.openclaw/workspace/memory/2026/05/2026-05-01-raw.md
+[Sat May  2 12:14:42 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/05/2026-05-01-raw.md ===
+[Sat May  2 12:14:42 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-05-01.md ===
+[Sat May  2 02:30:01 AM JST 2026] === Starting memory save for 2026-05-01 ===
+[Sat May  2 02:30:01 AM JST 2026] === Starting memory save for 2026-05-01 ===
+[Sat May  2 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[Sat May  2 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:3251480) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Sat May  2 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+[Sat May  2 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-05-01
+Found 83 messages for 2026-05-01
+Saved 83 messages to /root/.openclaw/workspace/memory/2026/05/2026-05-01-raw.md
+[Sat May  2 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/05/2026-05-01-raw.md ===
+[Sat May  2 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/05/2026-05-01-raw.md ===
+[Sat May  2 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-05-01.md ===
+[Sat May  2 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-05-01.md ===
+[Sun May  3 02:30:01 AM JST 2026] === Starting memory save for 2026-05-02 ===
+[Sun May  3 02:30:01 AM JST 2026] === Starting memory save for 2026-05-02 ===
+[Sun May  3 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[Sun May  3 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:3620806) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Sun May  3 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+[Sun May  3 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-05-02
+Found 36 messages for 2026-05-02
+Saved 36 messages to /root/.openclaw/workspace/memory/2026/05/2026-05-02-raw.md
+[Sun May  3 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/05/2026-05-02-raw.md ===
+[Sun May  3 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/05/2026-05-02-raw.md ===
+[Sun May  3 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-05-02.md ===
+[Sun May  3 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-05-02.md ===
+[Mon May  4 02:30:01 AM JST 2026] === Starting memory save for 2026-05-03 ===
+[Mon May  4 02:30:01 AM JST 2026] === Starting memory save for 2026-05-03 ===
+[Mon May  4 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[Mon May  4 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:4033853) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Mon May  4 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+[Mon May  4 02:30:07 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-05-03
+Found 18 messages for 2026-05-03
+Saved 18 messages to /root/.openclaw/workspace/memory/2026/05/2026-05-03-raw.md
+[Mon May  4 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/05/2026-05-03-raw.md ===
+[Mon May  4 02:30:07 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/05/2026-05-03-raw.md ===
+[Mon May  4 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-05-03.md ===
+[Mon May  4 02:30:07 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-05-03.md ===
+[Tue May  5 02:30:01 AM JST 2026] === Starting memory save for 2026-05-04 ===
+[Tue May  5 02:30:01 AM JST 2026] === Starting memory save for 2026-05-04 ===
+[Tue May  5 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[Tue May  5 02:30:01 AM JST 2026] Fetching channel: 1474972453351456930
+[plugins] [adp-openclaw] Plugin register() called
+[plugins] [adp-openclaw] Plugin registration complete
+(node:208368) [OPENCLAW_PLUGIN_SDK_COMPAT_DEPRECATED] Warning: openclaw/plugin-sdk/compat is deprecated for new plugins. Migrate to focused openclaw/plugin-sdk/<subpath> imports. See https://docs.openclaw.ai/plugins/sdk-migration
+Bundled plugins must use scoped plugin-sdk subpaths. External plugins may keep compat temporarily while migrating. Migration guide: https://docs.openclaw.ai/plugins/sdk-migration
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Tue May  5 02:30:12 AM JST 2026] Messages found in 1474972453351456930
+[Tue May  5 02:30:12 AM JST 2026] Messages found in 1474972453351456930
+Processing 100 total messages for 2026-05-04
+Found 78 messages for 2026-05-04
+Saved 78 messages to /root/.openclaw/workspace/memory/2026/05/2026-05-04-raw.md
+[Tue May  5 02:30:13 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/05/2026-05-04-raw.md ===
+[Tue May  5 02:30:13 AM JST 2026] === Memory save complete: /root/.openclaw/workspace/memory/2026/05/2026-05-04-raw.md ===
+[Tue May  5 02:30:13 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-05-04.md ===
+[Tue May  5 02:30:13 AM JST 2026] === six6_lab sync complete: /root/.openclaw/workspace/six6_lab/memory/2026-05-04.md ===
