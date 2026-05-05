@@ -31,6 +31,42 @@ def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
+def env_file_path():
+    return os.path.join(repo_root(), ".env")
+
+
+def load_env_file(path):
+    values = {}
+    if not os.path.exists(path):
+        return values
+    with open(path, "r", encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            if not key:
+                continue
+            if value and len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+                value = value[1:-1]
+            values[key] = value
+    return values
+
+
+def default_base_dir():
+    env_value = os.environ.get("SIX6_BASE_DIR")
+    if env_value:
+        return os.path.abspath(env_value)
+
+    file_values = load_env_file(env_file_path())
+    if file_values.get("SIX6_BASE_DIR"):
+        return os.path.abspath(file_values["SIX6_BASE_DIR"])
+
+    return repo_root()
+
+
 def load_jsonl(path):
     items = []
     if not os.path.exists(path):
@@ -153,19 +189,20 @@ def pulse(command_base_dir, pulse_type):
 def main():
     parser = argparse.ArgumentParser(description="six6 runtime entrypoint")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    default_dir = default_base_dir()
 
     init_parser = subparsers.add_parser("init")
-    init_parser.add_argument("--base-dir", default=repo_root())
+    init_parser.add_argument("--base-dir", default=default_dir)
 
     validate_parser = subparsers.add_parser("validate")
-    validate_parser.add_argument("--base-dir", default=repo_root())
+    validate_parser.add_argument("--base-dir", default=default_dir)
 
     doctor_parser = subparsers.add_parser("doctor")
-    doctor_parser.add_argument("--base-dir", default=repo_root())
+    doctor_parser.add_argument("--base-dir", default=default_dir)
 
     pulse_parser = subparsers.add_parser("pulse")
     pulse_parser.add_argument("pulse_type", choices=["heartbeat", "daily", "nightly", "idle"])
-    pulse_parser.add_argument("--base-dir", default=repo_root())
+    pulse_parser.add_argument("--base-dir", default=default_dir)
 
     args = parser.parse_args()
 
