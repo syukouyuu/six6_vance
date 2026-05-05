@@ -128,21 +128,23 @@ These two lanes must not be mixed.
 
 The system uses a standardized "Plan A" logging strategy designed for VPS stability and easy maintenance.
 
-### 1. Daily Rolling Logs
+### 1. Daily Logs
 Each module (meditation, daydream, etc.) manages its own logs via `runtime/scripts/logger_helper.py`.
 - **Path**: `base_dir/log/YYYY-MM-DD_module.log`
-- **Retention**: Keeps 30 days of history by default.
+- **Maintenance**: No automatic cleanup; logs are kept indefinitely. Requires manual management or external logrotate configurations for VPS environments.
 - **Format**: Standardized `[timestamp] [level] [name] message`.
 
 ### 2. Autonomous Logging
 Scripts are designed to be "log-autonomous."
 - They do not rely on shell redirection (`>>`) for primary logging.
-- They capture both `stdout` and `stderr` (via standard Python `logging` integration).
+- Logger output is written to the daily file and mirrored to stdout with full date/time prefixes.
+- Raw stderr is also mirrored into the daily file as `ERROR`, while still being printed to the original stderr stream.
+- Uncaught Python exceptions are written to the daily file with traceback details.
 - They preserve emojis (✅, ❌, 🧘) for quick visual debugging.
 
 ### 3. VPS Integration
-- **Crontab**: Can run scripts directly without worrying about log management.
-- **Monitoring**: `StreamHandler` remains active, allowing real-time monitoring via `tail -f` or existing terminal-based observers.
+- **Crontab**: Can run scripts directly without shell redirection for primary Python logs; long-term cleanup is handled manually or by external logrotate.
+- **Monitoring**: `StreamHandler` and stderr tee remain active, allowing real-time monitoring via `tail -f` or existing terminal-based observers.
 
 ## Protocol Authority
 
