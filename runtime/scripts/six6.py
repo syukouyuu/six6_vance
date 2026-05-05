@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import argparse
 import datetime
 import json
@@ -6,6 +5,9 @@ import os
 import subprocess
 import sys
 
+# Inject current directory into sys.path to access logger_helper
+sys.path.append(os.path.dirname(__file__))
+from logger_helper import setup_six6_logging
 
 MODULES = [
     "skill-memory",
@@ -15,6 +17,14 @@ MODULES = [
     "skill-autoloop",
     "skill-monitor",
 ]
+
+logger = None
+
+def log(msg):
+    if logger:
+        logger.info(msg)
+    else:
+        print(msg)
 
 
 def repo_root():
@@ -158,6 +168,10 @@ def main():
     pulse_parser.add_argument("--base-dir", default=repo_root())
 
     args = parser.parse_args()
+
+    # Initialize Logger
+    global logger
+    logger = setup_six6_logging("runtime", args.base_dir)
 
     if args.command == "init":
         init_base_dir(os.path.abspath(args.base_dir))

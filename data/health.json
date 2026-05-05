@@ -1,0 +1,19 @@
+{
+  "updated_at": "2026-05-05T17:07:05.964277",
+  "status": "warn",
+  "base_dir": "/home/freya/git_repository/six6",
+  "checks": {
+    "base_dir_exists": true,
+    "memory_dir_exists": true,
+    "data_dir_exists": true,
+    "gh_available": false
+  },
+  "modules": {
+    "skill-memory": true,
+    "skill-meditation": true,
+    "skill-daydream": true,
+    "skill-topic-lab": true,
+    "skill-autoloop": true,
+    "skill-monitor": true
+  }
+}

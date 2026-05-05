@@ -2,49 +2,131 @@ import os
 import re
 import json
 import urllib.request
+import urllib.error
 import datetime
+import time
 import argparse
+import sys
 
-def call_llm(api_base, api_key, model, prompt):
-    url = f"{api_base.rstrip('/')}/chat/completions"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
-    data = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.3
-    }
+# Inject runtime/scripts into sys.path to access logger_helper
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(os.path.join(repo_root, "runtime", "scripts"))
+from logger_helper import setup_six6_logging
+
+logger = None
+
+def log(msg):
+    # Backward compatibility for any remaining calls
+    if logger:
+        logger.info(msg)
+    else:
+        print(msg)
+
+
+def default_meditation_date():
+    return (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
+
+def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.3, max_retries=3):
+    # Auto-detect API type if not provided
+    if not api_type:
+        if "anthropic" in api_base.lower():
+            api_type = "anthropic"
+        else:
+            api_type = "openai"
+
+    if api_type == "anthropic":
+        url = f"{api_base.rstrip('/')}/v1/messages"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+        data = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 4096,
+            "temperature": float(temperature)
+        }
+    else:  # Default to OpenAI-compatible
+        url = f"{api_base.rstrip('/')}/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+        data = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": float(temperature)
+        }
+
     req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"), headers=headers)
-    try:
-        with urllib.request.urlopen(req) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            return result["choices"][0]["message"]["content"]
-    except Exception as e:
-        print(f"Error calling LLM: {e}")
-        return None
+
+    for attempt in range(1, max_retries + 2):  # attempts: 1..max_retries+1
+        try:
+            with urllib.request.urlopen(req, timeout=180) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                if api_type == "anthropic":
+                    if "content" not in result:
+                        log(f"Unexpected response structure: {result}")
+                        return None
+                    content = "".join([c["text"] for c in result["content"] if c.get("type") == "text"])
+                else:
+                    if "choices" not in result or not result["choices"]:
+                        log(f"Unexpected response structure: {result}")
+                        return None
+                    content = result["choices"][0]["message"]["content"]
+
+                # Filter out <think>...</think> blocks (case-insensitive)
+                if content:
+                    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL | re.IGNORECASE).strip()
+
+                return content
+
+        except urllib.error.HTTPError as e:
+            # 4xx errors: no point retrying (auth failure, bad request, etc.)
+            log(f"❌ HTTP error {e.code} calling LLM ({api_type}): {e.reason}")
+            try:
+                log(f"Response details: {e.read().decode('utf-8')}")
+            except Exception:
+                pass
+            return None
+
+        except Exception as e:
+            wait = attempt * 5
+            if attempt <= max_retries:
+                log(f"⚠️ Attempt {attempt}/{max_retries + 1} failed: {type(e).__name__}: {e}. Retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                log(f"❌ All {max_retries + 1} attempts failed. Last error: {type(e).__name__}: {e}")
+                return None
 
 def main():
     parser = argparse.ArgumentParser(description="Run nightly meditation to consolidate memory.")
     parser.add_argument("--base-dir", default=".", help="Base directory of the agent.")
-    parser.add_argument("--date", help="Date of the memory to process (YYYY-MM-DD). Defaults to today.", default=datetime.datetime.now().strftime("%Y-%m-%d"))
+    parser.add_argument("--date", help="Date of the memory to process (YYYY-MM-DD). Defaults to yesterday for overnight runs.", default=default_meditation_date())
     parser.add_argument("--api-base", default=os.environ.get("LLM_API_BASE", "https://api.openai.com/v1"), help="OpenAI-compatible API Base URL")
     parser.add_argument("--api-key", default=os.environ.get("LLM_API_KEY", ""), help="API Key")
     parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "gpt-4o"), help="Model to use")
+    parser.add_argument("--temperature", type=float, default=float(os.environ.get("MEDITATION_TEMPERATURE", "0.3")), help="Temperature for generation")
+    parser.add_argument("--api-type", default=os.environ.get("LLM_API_TYPE", ""), help="API Type (openai or anthropic)")
     args = parser.parse_args()
 
+    # Initialize Logger
+    global logger
+    logger = setup_six6_logging("meditation", args.base_dir)
+
     if not args.api_key:
-        print("❌ Error: API Key is required. Set LLM_API_KEY env var or use --api-key.")
-        return
+        logger.error("❌ API Key is required. Set LLM_API_KEY env var or use --api-key.")
+        raise SystemExit(1)
+
 
     mem_path = os.path.join(args.base_dir, "MEMORY.md")
     daily_path = os.path.join(args.base_dir, "memory", f"{args.date}.md")
     evo_path = os.path.join(args.base_dir, "data", "evolution.md")
 
     if not os.path.exists(daily_path):
-        print(f"⚠️ No daily memory found at {daily_path}. Skipping meditation.")
-        return
+        log(f"⚠️ No daily memory found at {daily_path}. Skipping meditation.")
+        raise SystemExit(1)
 
     with open(daily_path, "r", encoding="utf-8") as f:
         daily_memory = f.read()
@@ -71,25 +153,36 @@ Task:
 3. Output a brief 1-sentence reflection on how you evolved today wrapped in <evolution> tags.
 """
 
-    print(f"🧘 Initiating meditation for {args.date} using {args.model}...")
-    response = call_llm(args.api_base, args.api_key, args.model, prompt)
+    log(f"🧘 Initiating meditation for {args.date} using {args.model}...")
+    response = call_llm(args.api_base, args.api_key, args.model, prompt, args.api_type, args.temperature)
     if not response:
-        return
+        log("❌ No response from LLM. Aborting.")
+        raise SystemExit(1)
 
-    new_memory_match = re.search(r"<new_memory>\n?(.*?)\n?</new_memory>", response, re.DOTALL)
-    evo_match = re.search(r"<evolution>\n?(.*?)\n?</evolution>", response, re.DOTALL)
+    new_memory_match = re.search(r"<new_memory>\s*(.*?)\s*</new_memory>", response, re.DOTALL | re.IGNORECASE)
+    evo_match = re.search(r"<evolution>\s*(.*?)\s*</evolution>", response, re.DOTALL | re.IGNORECASE)
 
     if new_memory_match:
         with open(mem_path, "w", encoding="utf-8") as f:
             f.write(new_memory_match.group(1).strip())
-        print(f"✅ Core MEMORY.md updated.")
-    
+        log("✅ Core MEMORY.md updated.")
+
     if evo_match:
         os.makedirs(os.path.dirname(evo_path), exist_ok=True)
         evo_text = evo_match.group(1).strip()
         with open(evo_path, "a", encoding="utf-8") as f:
             f.write(f"- **{args.date}**: {evo_text}\n")
-        print(f"🌱 Evolution log appended: {evo_text}")
+        log(f"🌱 Evolution log appended: {evo_text}")
+        return
+
+    if not new_memory_match:
+        log("❌ LLM output did not contain valid <new_memory> tags.")
+        log(f"Raw LLM output snippet: {response[:500]}")
+        raise SystemExit(1)
+
+    log("❌ LLM output did not contain valid <evolution> tags.")
+    log(f"Raw LLM output snippet: {response[:500]}")
+    raise SystemExit(1)
 
 if __name__ == "__main__":
     main()
