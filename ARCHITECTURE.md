@@ -202,8 +202,8 @@ If cron changes are made close to trigger time, restart `crond` and verify execu
 
 The actual repository path is:
 
-`/root/.openclaw/workspace/skills/six6/repo`
+`/root/.openclaw/workspace/skills/six6_vance`
 
 Not:
 
-`/root/.openclaw/workspace/skills/six6/rep`
+`/root/.openclaw/workspace/skills/six6/repo`

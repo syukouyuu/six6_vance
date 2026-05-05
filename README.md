@@ -78,6 +78,11 @@ Read the detailed [ARCHITECTURE.md](ARCHITECTURE.md) for data flow specification
    ```bash
    python3 runtime/scripts/six6.py init --base-dir /path/to/agent/root
    ```
+   Or set a default writable base directory in `.env`:
+   ```bash
+   SIX6_BASE_DIR=/path/to/agent/root
+   ```
+   After that, `init`, `validate`, `doctor`, and `pulse` will use that path by default unless `--base-dir` is passed explicitly.
 5. Validate protocol files:
    ```bash
    python3 runtime/scripts/six6.py validate --base-dir /path/to/agent/root
