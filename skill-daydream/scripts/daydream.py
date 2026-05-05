@@ -8,11 +8,21 @@ import time
 import urllib.request
 import urllib.error
 import argparse
+import sys
 
+# Inject runtime/scripts into sys.path to access logger_helper
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(os.path.join(repo_root, "runtime", "scripts"))
+from logger_helper import setup_six6_logging
+
+logger = None
 
 def log(msg):
-    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{ts}] {msg}", flush=True)
+    # Backward compatibility
+    if logger:
+        logger.info(msg)
+    else:
+        print(msg)
 
 def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.8, max_retries=3):
     # Auto-detect API type if not provided
@@ -97,8 +107,12 @@ def main():
     parser.add_argument("--api-type", default=os.environ.get("LLM_API_TYPE", ""), help="API Type (openai or anthropic)")
     args = parser.parse_args()
 
+    # Initialize Logger
+    global logger
+    logger = setup_six6_logging("daydream", args.base_dir)
+
     if not args.api_key:
-        log("❌ Error: API Key is required. Set LLM_API_KEY env var or use --api-key.")
+        logger.error("❌ API Key is required. Set LLM_API_KEY env var or use --api-key.")
         raise SystemExit(1)
 
     mem_dir = os.path.join(args.base_dir, "memory")

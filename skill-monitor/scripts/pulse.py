@@ -25,11 +25,17 @@ def run_module_script(agent_base_dir, module, script_name, extra_args=None):
         cmd.extend(extra_args)
 
     log(f"[pulse] 🫀 Triggering: {module}/{script_name}")
+    
     try:
+        # We no longer redirect to a file here because the module script
+        # now handles its own daily rolling logging via logger_helper.
         subprocess.run(cmd, check=True)
         return True
     except subprocess.CalledProcessError as e:
-        log(f"❌ Error running {module}/{script_name}: {e}")
+        log(f"❌ Error in {module}: process exited with error.")
+        return False
+    except Exception as e:
+        log(f"❌ System error: {e}")
         return False
 
 def main():

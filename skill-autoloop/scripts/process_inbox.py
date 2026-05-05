@@ -4,11 +4,20 @@ import argparse
 import subprocess
 import datetime
 import tempfile
+import sys
 
+# Inject runtime/scripts into sys.path to access logger_helper
+repo_root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(repo_root_dir, "runtime", "scripts"))
+from logger_helper import setup_six6_logging
+
+logger = None
 
 def log(msg):
-    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{ts}] {msg}", flush=True)
+    if logger:
+        logger.info(msg)
+    else:
+        print(msg)
 
 
 def repo_root():
@@ -97,6 +106,10 @@ def main():
     parser = argparse.ArgumentParser(description="Process the Agent's central inbox.")
     parser.add_argument("--base-dir", default=".", help="Base directory of the agent.")
     args = parser.parse_args()
+
+    # Initialize Logger
+    global logger
+    logger = setup_six6_logging("autoloop", args.base_dir)
 
     inbox_file = os.path.join(args.base_dir, "data", "inbox.jsonl")
     items = load_inbox(inbox_file)

@@ -4,11 +4,20 @@ import argparse
 import datetime
 import subprocess
 import tempfile
+import sys
 
+# Inject runtime/scripts into sys.path to access logger_helper
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(os.path.join(repo_root, "runtime", "scripts"))
+from logger_helper import setup_six6_logging
+
+logger = None
 
 def log(msg):
-    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{ts}] {msg}", flush=True)
+    if logger:
+        logger.info(msg)
+    else:
+        print(msg)
 
 
 def load_seeds(filepath):
@@ -74,6 +83,10 @@ def main():
     parser.add_argument("--tick", action="store_true", help="Perform daily decay and maturity checks.")
     parser.add_argument("--add-water", type=str, help="Add +10 maturity to a specific seed ID.")
     args = parser.parse_args()
+
+    # Initialize Logger
+    global logger
+    logger = setup_six6_logging("topic-lab", args.base_dir)
 
     seeds_file = os.path.join(args.base_dir, "data", "topic-lab-seeds.jsonl")
     seeds = load_seeds(seeds_file)
