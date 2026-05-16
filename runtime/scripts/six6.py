@@ -55,6 +55,11 @@ def load_env_file(path):
     return values
 
 
+def apply_env_defaults(path):
+    for key, value in load_env_file(path).items():
+        os.environ.setdefault(key, value)
+
+
 def default_base_dir():
     env_value = os.environ.get("SIX6_BASE_DIR")
     if env_value:
@@ -187,6 +192,8 @@ def pulse(command_base_dir, pulse_type):
 
 
 def main():
+    apply_env_defaults(env_file_path())
+
     parser = argparse.ArgumentParser(description="six6 runtime entrypoint")
     subparsers = parser.add_subparsers(dest="command", required=True)
     default_dir = default_base_dir()
