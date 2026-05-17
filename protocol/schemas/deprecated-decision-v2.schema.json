@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://six6.local/protocol/schemas/deprecated-decision-v2.schema.json",
+  "title": "six6 Deprecated Decision V2",
+  "description": "One JSONL record produced by human review when a memory candidate is rejected or retired from the approval path. It keeps the audit boundary minimal and links to the fuller human-readable deprecated_decisions.md log when present.",
+  "type": "object",
+  "required": [
+    "candidate_id",
+    "topic",
+    "deprecation_reason",
+    "source_file",
+    "deprecated_at",
+    "schema_version"
+  ],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "description": "Candidate-layer stable identifier used to audit which candidate was deprecated.",
+      "pattern": "^(mem|evo|rel|les|fac|pro)-[0-9]{6}-[a-f0-9]{12}$"
+    },
+    "topic": {
+      "type": "string",
+      "description": "Candidate topic retained so deprecation logs remain readable without reopening the candidate batch.",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "deprecation_reason": {
+      "type": "string",
+      "description": "Concise reason the candidate should not enter approved memory ingestion.",
+      "minLength": 1,
+      "maxLength": 240
+    },
+    "source_file": {
+      "type": "string",
+      "description": "Physical source file retained for audit lookup.",
+      "minLength": 1
+    },
+    "deprecated_at": {
+      "type": "string",
+      "description": "Human deprecation decision time.",
+      "format": "date-time"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "deprecated-decision.v2",
+      "default": "deprecated-decision.v2"
+    }
+  },
+  "additionalProperties": false,
+  "$comment": "Deprecated Decision V2 is the machine-readable rejection record. deprecated_decisions.md may provide narrative review notes, but this JSONL contract is the stable audit key/value boundary."
+}

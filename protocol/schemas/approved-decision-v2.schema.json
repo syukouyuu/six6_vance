@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://six6.local/protocol/schemas/approved-decision-v2.schema.json",
+  "title": "six6 Approved Decision V2",
+  "description": "One JSONL record produced by human review when a memory candidate is approved for ingestion. candidate_id is retained for routing, audit, and ingestion lookup only; it must not be reused directly as the final FalkorDB Memory.id.",
+  "type": "object",
+  "required": [
+    "candidate_id",
+    "topic",
+    "content",
+    "timestamp",
+    "category",
+    "maturity",
+    "source",
+    "source_file",
+    "source_section",
+    "approved_at",
+    "schema_version"
+  ],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "description": "Candidate-layer stable identifier retained for review routing, audit traceability, and idempotent ingestion lookup. It is not the final FalkorDB Memory.id.",
+      "pattern": "^(mem|evo|rel|les|fac|pro)-[0-9]{6}-[a-f0-9]{12}$"
+    },
+    "topic": {
+      "type": "string",
+      "description": "Short title approved for the memory record.",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "content": {
+      "type": "string",
+      "description": "Approved distilled memory content, not a raw source backup.",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "Source event time when known; otherwise candidate generation time.",
+      "format": "date-time"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "fact",
+        "protocol",
+        "lesson",
+        "relation",
+        "evolution"
+      ]
+    },
+    "maturity": {
+      "type": "integer",
+      "description": "Approved maturity level carried from the candidate or adjusted by human review.",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "source": {
+      "type": "string",
+      "description": "Logical source path or process name retained for ingestion provenance.",
+      "minLength": 1
+    },
+    "source_file": {
+      "type": "string",
+      "description": "Physical source file retained for audit and ingestion provenance.",
+      "minLength": 1
+    },
+    "source_section": {
+      "type": "string",
+      "description": "Source heading or section name when available.",
+      "maxLength": 80
+    },
+    "approved_at": {
+      "type": "string",
+      "description": "Human approval time.",
+      "format": "date-time"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "approved-decision.v2",
+      "default": "approved-decision.v2"
+    }
+  },
+  "additionalProperties": false,
+  "$comment": "Approved Decision V2 is the stable ingestion input boundary for accepted memory candidates. The ingestion executor must look up candidate_id for idempotency/audit and generate its own final FalkorDB Memory.id."
+}
