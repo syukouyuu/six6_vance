@@ -2,9 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://six6.local/protocol/schemas/memory-candidate.schema.json",
   "title": "six6 Memory Candidate",
-  "description": "One JSONL record emitted by memory-candidate-generator before human review. candidate_id is the stable review key and must not be reused as the final FalkorDB Memory.id.",
+  "description": "One JSONL record emitted by memory-candidate-generator before human review. review_id is a batch-local human label; candidate_id is the machine-stable routing and ingestion key; neither is reused as the final FalkorDB Memory.id.",
   "type": "object",
   "required": [
+    "review_id",
     "candidate_id",
     "topic",
     "content",
@@ -13,12 +14,20 @@
     "maturity",
     "source",
     "source_file",
-    "created_at"
+    "source_section",
+    "created_at",
+    "schema_version",
+    "hash_input"
   ],
   "properties": {
+    "review_id": {
+      "type": "string",
+      "description": "Batch-local display ordinal for human review reports. It is serialized for auditability but must not be used for approval routing or database ingestion.",
+      "pattern": "^[0-9]{2,4}$"
+    },
     "candidate_id": {
       "type": "string",
-      "description": "Candidate-layer stable identifier used for review, approval, discard, and idempotent ingestion lookup.",
+      "description": "Candidate-layer stable identifier used for approval routing, discard routing, and idempotent ingestion lookup.",
       "pattern": "^(mem|evo|rel|les|fac|pro)-[0-9]{6}-[a-f0-9]{12}$"
     },
     "topic": {
@@ -82,7 +91,7 @@
     },
     "hash_input": {
       "type": "string",
-      "description": "Optional audit string used to derive candidate_id.",
+      "description": "Canonical audit string used to derive candidate_id.",
       "minLength": 1
     }
   },
