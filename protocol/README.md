@@ -17,6 +17,8 @@ testable, and safe to integrate into different OpenClaw deployments.
 - `memory/YYYY-MM-DD.md`: append-only daily memory log.
 - `data/inbox.jsonl`: central task and event queue.
 - `data/topic-lab-seeds.jsonl`: idea seed database.
+- `memory/candidates/YYYY-MM-DD-memory-candidates.jsonl`: distilled memory candidates awaiting review.
+- `memory/candidates/latest-memory-candidates.jsonl`: latest candidate batch pointer/copy.
 - `data/health.json`: runtime health heartbeat.
 - `data/evolution.md`: meditation evolution log.
 
@@ -24,7 +26,29 @@ testable, and safe to integrate into different OpenClaw deployments.
 
 - `schemas/inbox-item.schema.json`
 - `schemas/topic-lab-seed.schema.json`
+- `schemas/memory-candidate.schema.json`
 - `schemas/health.schema.json`
+
+## Memory Candidate Contract
+
+`memory-candidate.schema.json` defines one JSONL record emitted by
+`memory-candidate-generator`. Its stable key is `candidate_id`, which is used
+for review reports, approval routing, discard routing, and ingestion idempotency.
+The final FalkorDB `Memory.id` remains an ingestion-layer database key and must
+not directly reuse `candidate_id`.
+
+Generate `candidate_id` deterministically as:
+
+```text
+<prefix>-<YYMMDD>-<sha256(source_file + "\n" + source_section + "\n" + topic + "\n" + content)[0:12]>
+```
+
+Recommended prefixes map to `category`: `fac`, `pro`, `les`, `rel`, `evo`.
+Use `mem` only for legacy or general candidates.
+
+Example JSONL:
+
+- `examples/memory-candidates/valid-sample.jsonl`
 
 ## Closed Loop
 

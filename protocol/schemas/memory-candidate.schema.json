@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://six6.local/protocol/schemas/memory-candidate.schema.json",
+  "title": "six6 Memory Candidate",
+  "description": "One JSONL record emitted by memory-candidate-generator before human review. candidate_id is the stable review key and must not be reused as the final FalkorDB Memory.id.",
+  "type": "object",
+  "required": [
+    "candidate_id",
+    "topic",
+    "content",
+    "timestamp",
+    "category",
+    "maturity",
+    "source",
+    "source_file",
+    "created_at"
+  ],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "description": "Candidate-layer stable identifier used for review, approval, discard, and idempotent ingestion lookup.",
+      "pattern": "^(mem|evo|rel|les|fac|pro)-[0-9]{6}-[a-f0-9]{12}$"
+    },
+    "topic": {
+      "type": "string",
+      "description": "Short title for the distilled memory candidate.",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "content": {
+      "type": "string",
+      "description": "Distilled summary, not a raw source backup.",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "Source event time when known; otherwise generation time.",
+      "format": "date-time"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "fact",
+        "protocol",
+        "lesson",
+        "relation",
+        "evolution"
+      ]
+    },
+    "maturity": {
+      "type": "integer",
+      "description": "Current V1 candidates normally use 1 unless a generator has a stronger maturity policy.",
+      "minimum": 1,
+      "maximum": 5,
+      "default": 1
+    },
+    "source": {
+      "type": "string",
+      "description": "Logical source path or process name.",
+      "minLength": 1
+    },
+    "source_file": {
+      "type": "string",
+      "description": "Physical source file retained for audit and routing.",
+      "minLength": 1
+    },
+    "source_section": {
+      "type": "string",
+      "description": "Source heading or section name when available.",
+      "maxLength": 80
+    },
+    "created_at": {
+      "type": "string",
+      "description": "Candidate generation time.",
+      "format": "date-time"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "memory-candidate.v1",
+      "default": "memory-candidate.v1"
+    },
+    "hash_input": {
+      "type": "string",
+      "description": "Optional audit string used to derive candidate_id.",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false,
+  "$comment": "Idempotency rule: candidate_id = '<prefix>-<YYMMDD>-<sha256(source_file + \"\\n\" + source_section + \"\\n\" + topic + \"\\n\" + content)[0:12]>'. Prefix maps to category: fact=fac, protocol=pro, lesson=les, relation=rel, evolution=evo; use mem only for legacy/general candidates."
+}
