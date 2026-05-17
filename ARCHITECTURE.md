@@ -81,9 +81,9 @@ These two lanes must not be mixed.
    - `memory/candidates/latest-memory-candidates.jsonl`
 5. `memory-review-report` reads the candidates JSONL and produces a human-readable review report.
    - Report format must show both:
-     - a short display ordinal for mobile reading
+     - `review_id`, a short batch-local display ordinal for mobile reading
      - the real `candidate_id` from the JSONL record
-   - Display ordinals such as `01`, `02`, `03` are convenience labels only and must never replace the real candidate identifier.
+   - Display ordinals such as `01`, `02`, `03` are serialized for auditability but must never replace the real candidate identifier.
 6. Master performs manual review.
 7. `memory-decision-router` splits reviewed records into:
    - `memory/approved_decisions/*.jsonl`
@@ -178,8 +178,8 @@ There are two different ID layers in this workflow:
 
 Operationally:
 
-- review reports may show candidate IDs such as `mem-022` or `evo-045`
-- review reports may also show short display ordinals such as `01` or `02`, but those are not valid routing identifiers
+- review reports may show machine-stable candidate IDs such as `mem-260425-a1b2c3d4e5f6` or `evo-260425-a1b2c3d4e5f6`
+- review reports may also show `review_id` values such as `01` or `02`, but those are not valid routing identifiers
 - approved records should preserve that source value as `candidate_id`
 - the ingestion layer should generate or assign the final FalkorDB memory ID separately
 
