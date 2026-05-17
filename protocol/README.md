@@ -19,6 +19,9 @@ testable, and safe to integrate into different OpenClaw deployments.
 - `data/topic-lab-seeds.jsonl`: idea seed database.
 - `memory/candidates/YYYY-MM-DD-memory-candidates.jsonl`: distilled memory candidates awaiting review.
 - `memory/candidates/latest-memory-candidates.jsonl`: latest candidate batch pointer/copy.
+- `memory/approved/YYYY-MM-DD-approved-decisions.jsonl`: human-approved memory decisions ready for ingestion lookup.
+- `memory/deprecated/YYYY-MM-DD-deprecated-decisions.jsonl`: machine-readable deprecated candidate audit records.
+- `memory/deprecated/deprecated_decisions.md`: optional human-readable deprecation notes paired with deprecated decision records.
 - `data/health.json`: runtime health heartbeat.
 - `data/evolution.md`: meditation evolution log.
 
@@ -27,6 +30,8 @@ testable, and safe to integrate into different OpenClaw deployments.
 - `schemas/inbox-item.schema.json`
 - `schemas/topic-lab-seed.schema.json`
 - `schemas/memory-candidate.schema.json`
+- `schemas/approved-decision-v2.schema.json`
+- `schemas/deprecated-decision-v2.schema.json`
 - `schemas/health.schema.json`
 
 ## Memory Candidate Contract
@@ -63,6 +68,51 @@ Topic Lab lane and should not be reused for Memory Candidate review ordinals.
 Example JSONL:
 
 - `examples/memory-candidates/valid-sample.jsonl`
+
+## Memory Decision Contracts
+
+Human review moves each `memory-candidate.v1` record into exactly one decision
+lane:
+
+- Approved decisions use `approved-decision.v2` and become the stable input
+  boundary for the future memory ingestion executor.
+- Deprecated decisions use `deprecated-decision.v2` and stay out of ingestion
+  while preserving enough audit data to explain the rejection.
+
+Both lanes must keep `candidate_id`. That ID is only for routing, audit, and
+ingestion lookup/idempotency. It must not be reused directly as the final
+FalkorDB `Memory.id`; the ingestion layer is responsible for generating the
+database memory ID.
+
+### Approved Decision V2
+
+`approved-decision-v2.schema.json` carries the candidate fields needed by
+ingestion: `candidate_id`, `topic`, `content`, `timestamp`, `category`,
+`maturity`, `source`, `source_file`, and `source_section`. It also adds
+`approved_at` and fixes `schema_version` to `approved-decision.v2`.
+
+Approved records deliberately omit `review_id` and `hash_input`: `review_id`
+is a batch-local display label, and `hash_input` belongs to candidate
+generation audit rather than the approved ingestion boundary.
+
+Example JSONL:
+
+- `examples/approved-decisions/valid-sample.jsonl`
+
+### Deprecated Decision V2
+
+`deprecated-decision-v2.schema.json` is intentionally small. It requires
+`candidate_id`, `topic`, `deprecation_reason`, `source_file`, `deprecated_at`,
+and `schema_version`.
+
+The machine-readable JSONL is the canonical deprecated decision boundary.
+`deprecated_decisions.md`, when present, is a companion review log for narrative
+notes and reviewer context. It should reference the same `candidate_id` values
+but must not replace the JSONL audit record.
+
+Example JSONL:
+
+- `examples/deprecated-decisions/valid-sample.jsonl`
 
 ## Closed Loop
 
