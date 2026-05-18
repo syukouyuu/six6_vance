@@ -38,6 +38,26 @@ docker exec falkordb-memory redis-cli GRAPH.QUERY "FreyaGraph" "MATCH (a:Assista
 ### 步骤 C：去重与合并 (Merge & Dedup)
 使用 Cypher 的 `MERGE` 指令，确保同一个教训不会因为多次提到而产生重复节点。
 
+### 步骤 D：Memory 节点协议 (Memory Node V2)
+最终写入 FalkorDB 的 `(:Memory)` 节点必须符合
+`protocol/schemas/memory-node-v2.schema.json`。候选层 `candidate_id` 与最终
+`Memory.id` 分离：
+
+- `candidate_id` 保留人工审核来源，用于审计与重复 ingestion 查找。
+- `id` 是图库节点主键，由 ingestion executor 生成，不直接复用 `candidate_id`。
+
+推荐生成策略：
+
+```text
+memnode-<YYMMDD>-<sha256("memory-node.v2\n" + candidate_id)[0:16]>
+```
+
+重复 ingestion 时必须先按 `candidate_id` 查找现有 `(:Memory)` 节点。若已存在，
+保持 `id`、`candidate_id`、`schema_version` 不变，允许用最新 approved decision
+覆盖 `topic`、`content`、`timestamp`、`category`、`maturity`、`source` 与审计字段；
+若不存在，才创建新节点。同一个 FalkorDB graph 内，每个 `candidate_id` 最多对应
+一个 `(:Memory)` 节点。
+
 ---
 
 ## 3. 下一步行动建议
