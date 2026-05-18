@@ -148,16 +148,19 @@
   - 作废归档时间。
 
 ### E. FalkorDB Memory
-FalkorDB 中的 `Memory` 节点字段约定：
+FalkorDB 中的 `Memory` 节点遵循 `protocol/schemas/memory-node-v2.schema.json`。
+它是 `approved-decision.v2` 之后的最终图库节点协议，不是候选或审核记录。
 
 - `id`
   - 最终数据库主键。
-  - 由 ingestion 层生成。
-  - 不直接复用候选层 ID。
+  - 由 ingestion 层生成，格式为 `memnode-<YYMMDD>-<sha256("memory-node.v2\n" + candidate_id)[0:16]>`。
+  - 不直接复用候选层 `candidate_id`。
+  - 节点创建后必须保持稳定。
 
 - `candidate_id`
   - 原始候选层 ID。
-  - 用于回溯人工审核来源。
+  - 用于回溯人工审核来源，也是重复入库时的 upsert 查找键。
+  - 不得当作最终 `Memory.id` 使用。
 
 - `topic`
   - 记忆标题。
@@ -179,6 +182,40 @@ FalkorDB 中的 `Memory` 节点字段约定：
 
 - `source`
   - 来源文件或来源流程。
+
+- `schema_version`
+  - 固定为 `memory-node.v2`。
+
+可选审计字段：
+
+- `source_file`
+- `source_section`
+- `approved_at`
+- `ingested_at`
+
+字段映射规则：
+
+| approved-decision.v2 | FalkorDB Memory | 规则 |
+| --- | --- | --- |
+| `candidate_id` | `candidate_id` | 原样复制，用于审计与重复入库查找。 |
+| 无 | `id` | ingestion 首次创建时生成，后续保持稳定。 |
+| `topic` | `topic` | 原样复制，可随最新核准记录覆盖。 |
+| `content` | `content` | 原样复制，可随最新核准记录覆盖。 |
+| `timestamp` | `timestamp` | 原样复制，可随最新核准记录覆盖。 |
+| `category` | `category` | 原样复制，可随最新核准记录覆盖。 |
+| `maturity` | `maturity` | 原样复制，可随最新核准记录覆盖。 |
+| `source` | `source` | 原样复制，可随最新核准记录覆盖。 |
+| `source_file` | `source_file` | 可选审计复制。 |
+| `source_section` | `source_section` | 可选审计复制。 |
+| `approved_at` | `approved_at` | 可选审计复制。 |
+| ingestion 时间 | `ingested_at` | 写入时设置，可重复刷新。 |
+
+幂等更新规则：
+
+1. ingestion executor 必须先按 `candidate_id` 查找现有 `(:Memory)` 节点。
+2. 若已存在，必须保留 `id`、`candidate_id`、`schema_version`，允许覆盖 `topic`、`content`、`timestamp`、`category`、`maturity`、`source` 以及可选审计字段。
+3. 若不存在，才生成新的 `id` 并创建一个 `(:Memory)` 节点。
+4. 唯一性边界是同一个 FalkorDB graph 内每个 `candidate_id` 最多对应一个 `(:Memory)` 节点。
 
 ---
 *Status: V1 Baseline Established @ 2026-04-19*
