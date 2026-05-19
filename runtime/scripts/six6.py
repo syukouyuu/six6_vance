@@ -8,6 +8,7 @@ import sys
 # Inject current directory into sys.path to access logger_helper
 sys.path.append(os.path.dirname(__file__))
 from logger_helper import setup_six6_logging
+from runtime_io import SchemaValidationError, load_jsonl, load_schema
 
 MODULES = [
     "skill-memory",
@@ -72,22 +73,6 @@ def default_base_dir():
     return repo_root()
 
 
-def load_jsonl(path):
-    items = []
-    if not os.path.exists(path):
-        return items
-    with open(path, "r", encoding="utf-8") as handle:
-        for line_no, line in enumerate(handle, start=1):
-            raw = line.strip()
-            if not raw:
-                continue
-            try:
-                items.append((line_no, json.loads(raw)))
-            except json.JSONDecodeError as exc:
-                items.append((line_no, {"__invalid__": str(exc), "__raw__": raw}))
-    return items
-
-
 def ensure_file(path, default_content=""):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if not os.path.exists(path):
@@ -106,42 +91,16 @@ def init_base_dir(base_dir):
     print(f"Initialized six6 base dir at {base_dir}")
 
 
-def validate_inbox_item(item):
-    if "__invalid__" in item:
-        return False, item["__invalid__"]
-    if not isinstance(item.get("type"), str) or not item["type"]:
-        return False, "missing non-empty 'type'"
-    if not isinstance(item.get("ts"), int):
-        return False, "missing integer 'ts'"
-    return True, ""
-
-
-def validate_seed(item):
-    if "__invalid__" in item:
-        return False, item["__invalid__"]
-    required = ["id", "topic", "description", "source", "maturity", "created_at"]
-    for key in required:
-        if key not in item:
-            return False, f"missing '{key}'"
-    if not isinstance(item["maturity"], int) or item["maturity"] < 0 or item["maturity"] > 100:
-        return False, "invalid 'maturity'"
-    return True, ""
-
-
 def validate_base_dir(base_dir):
     inbox_path = os.path.join(base_dir, "data", "inbox.jsonl")
     seeds_path = os.path.join(base_dir, "data", "topic-lab-seeds.jsonl")
     issues = []
 
-    for line_no, item in load_jsonl(inbox_path):
-        ok, reason = validate_inbox_item(item)
-        if not ok:
-            issues.append(f"inbox.jsonl:{line_no}: {reason}")
-
-    for line_no, item in load_jsonl(seeds_path):
-        ok, reason = validate_seed(item)
-        if not ok:
-            issues.append(f"topic-lab-seeds.jsonl:{line_no}: {reason}")
+    for path, schema_name in ((inbox_path, "inbox-item"), (seeds_path, "topic-lab-seed")):
+        try:
+            load_jsonl(path, schema=load_schema(schema_name))
+        except (SchemaValidationError, ValueError) as exc:
+            issues.extend(str(exc).splitlines())
 
     if issues:
         print("Validation failed:")

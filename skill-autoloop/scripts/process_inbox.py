@@ -1,15 +1,14 @@
 import os
-import json
 import argparse
 import subprocess
 import datetime
-import tempfile
 import sys
 
 # Inject runtime/scripts into sys.path to access logger_helper
 repo_root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.join(repo_root_dir, "runtime", "scripts"))
 from logger_helper import setup_six6_logging
+from runtime_io import append_jsonl, load_jsonl, write_jsonl
 
 logger = None
 
@@ -33,33 +32,13 @@ def append_deadletter(base_dir, item, reason):
         "reason": reason,
         "item": item,
     }
-    with open(deadletter_file, "a", encoding="utf-8") as f:
-        f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    append_jsonl(deadletter_file, payload)
 
 def load_inbox(filepath):
-    if not os.path.exists(filepath):
-        return []
-    items = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                try:
-                    items.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
-    return items
+    return [record.data for record in load_jsonl(filepath, allow_missing=True)]
 
 def save_inbox(filepath, items):
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(prefix="inbox-", suffix=".jsonl", dir=os.path.dirname(filepath))
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            for item in items:
-                f.write(json.dumps(item, ensure_ascii=False) + "\n")
-        os.replace(tmp_path, filepath)
-    finally:
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+    write_jsonl(filepath, items)
 
 def dispatch_task(base_dir, item):
     """
