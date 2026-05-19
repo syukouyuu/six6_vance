@@ -1,10 +1,6 @@
 import os
 import re
-import json
-import urllib.request
-import urllib.error
 import datetime
-import time
 import argparse
 import sys
 
@@ -12,6 +8,7 @@ import sys
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.append(os.path.join(repo_root, "runtime", "scripts"))
 from logger_helper import setup_six6_logging
+from runtime_llm import call_llm as runtime_call_llm
 
 logger = None
 
@@ -28,77 +25,16 @@ def default_meditation_date():
 
 
 def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.3, max_retries=3):
-    # Auto-detect API type if not provided
-    if not api_type:
-        if "anthropic" in api_base.lower():
-            api_type = "anthropic"
-        else:
-            api_type = "openai"
-
-    if api_type == "anthropic":
-        url = f"{api_base.rstrip('/')}/v1/messages"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        }
-        data = {
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 4096,
-            "temperature": float(temperature)
-        }
-    else:  # Default to OpenAI-compatible
-        url = f"{api_base.rstrip('/')}/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        }
-        data = {
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": float(temperature)
-        }
-
-    req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"), headers=headers)
-
-    for attempt in range(1, max_retries + 2):  # attempts: 1..max_retries+1
-        try:
-            with urllib.request.urlopen(req, timeout=180) as response:
-                result = json.loads(response.read().decode("utf-8"))
-                if api_type == "anthropic":
-                    if "content" not in result:
-                        log(f"Unexpected response structure: {result}")
-                        return None
-                    content = "".join([c["text"] for c in result["content"] if c.get("type") == "text"])
-                else:
-                    if "choices" not in result or not result["choices"]:
-                        log(f"Unexpected response structure: {result}")
-                        return None
-                    content = result["choices"][0]["message"]["content"]
-
-                # Filter out <think>...</think> blocks (case-insensitive)
-                if content:
-                    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL | re.IGNORECASE).strip()
-
-                return content
-
-        except urllib.error.HTTPError as e:
-            # 4xx errors: no point retrying (auth failure, bad request, etc.)
-            log(f"❌ HTTP error {e.code} calling LLM ({api_type}): {e.reason}")
-            try:
-                log(f"Response details: {e.read().decode('utf-8')}")
-            except Exception:
-                pass
-            return None
-
-        except Exception as e:
-            wait = attempt * 5
-            if attempt <= max_retries:
-                log(f"⚠️ Attempt {attempt}/{max_retries + 1} failed: {type(e).__name__}: {e}. Retrying in {wait}s...")
-                time.sleep(wait)
-            else:
-                log(f"❌ All {max_retries + 1} attempts failed. Last error: {type(e).__name__}: {e}")
-                return None
+    return runtime_call_llm(
+        api_base,
+        api_key,
+        model,
+        prompt,
+        api_type=api_type,
+        temperature=temperature,
+        max_retries=max_retries,
+        logger=logger,
+    )
 
 def main():
     parser = argparse.ArgumentParser(description="Run nightly meditation to consolidate memory.")
