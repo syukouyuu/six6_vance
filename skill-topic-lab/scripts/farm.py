@@ -1,15 +1,14 @@
 import os
-import json
 import argparse
 import datetime
 import subprocess
-import tempfile
 import sys
 
 # Inject runtime/scripts into sys.path to access logger_helper
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.append(os.path.join(repo_root, "runtime", "scripts"))
 from logger_helper import setup_six6_logging
+from runtime_io import append_jsonl, load_jsonl, write_jsonl
 
 logger = None
 
@@ -21,39 +20,18 @@ def log(msg):
 
 
 def load_seeds(filepath):
-    if not os.path.exists(filepath):
-        return []
-    seeds = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                try:
-                    seeds.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
-    return seeds
+    return [record.data for record in load_jsonl(filepath, allow_missing=True)]
 
 def save_seeds(filepath, seeds):
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(prefix="seeds-", suffix=".jsonl", dir=os.path.dirname(filepath))
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            for seed in seeds:
-                f.write(json.dumps(seed, ensure_ascii=False) + "\n")
-        os.replace(tmp_path, filepath)
-    finally:
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+    write_jsonl(filepath, seeds)
 
 def emit_inbox_event(base_dir, payload):
     inbox_path = os.path.join(base_dir, "data", "inbox.jsonl")
-    os.makedirs(os.path.dirname(inbox_path), exist_ok=True)
     payload = dict(payload)
     payload.setdefault("type", "topic-lab-event")
     payload.setdefault("source", "skill-topic-lab")
     payload.setdefault("ts", int(datetime.datetime.now().timestamp()))
-    with open(inbox_path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    append_jsonl(inbox_path, payload)
 
 def plant_seed(seed):
     """Convert a mature seed into a GitHub Issue."""
