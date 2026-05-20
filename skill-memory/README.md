@@ -21,3 +21,12 @@ This will automatically create or append to `memory/2026-04-03.md` with a timest
 python3 scripts/update_now.py "Currently researching HTTP 402 protocols for x402 integration. Blocked by missing API key." --base-dir /path/to/agent/root
 ```
 This overwrites `NOW.md` so that the next agent session knows exactly what was happening.
+
+### 3. Ingest Approved Decisions
+```bash
+python3 scripts/memory-ingestion-executor.py --base-dir /path/to/agent/root --graph FreyaGraph
+```
+This reads only `memory/approved_decisions/latest-approved-seeds.jsonl`, validates
+`approved-decision.v2`, looks up existing FalkorDB `(:Memory)` nodes by
+`candidate_id`, then creates or updates `memory-node.v2` nodes. Each run writes an
+auditable JSONL report under `memory/ingestion/`.
