@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://six6.local/protocol/schemas/graph-relation.schema.json",
+  "title": "six6 Graph Relation",
+  "description": "One typed edge between graph nodes. Relations can connect Idea and Memory nodes while preserving source boundaries and write timing.",
+  "type": "object",
+  "required": [
+    "id",
+    "relation_type",
+    "from",
+    "to",
+    "created_at",
+    "source",
+    "schema_version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable relation identity inside the graph.",
+      "pattern": "^rel-[0-9]{6}-[a-f0-9]{16}$"
+    },
+    "relation_type": {
+      "type": "string",
+      "description": "Typed relation boundary. inspired_by is weak provenance; derived_from is a stronger transformation lineage.",
+      "enum": [
+        "inspired_by",
+        "derived_from",
+        "mentions",
+        "supports",
+        "contradicts",
+        "duplicates"
+      ]
+    },
+    "from": {
+      "$ref": "#/$defs/endpoint"
+    },
+    "to": {
+      "$ref": "#/$defs/endpoint"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "Time when this relation record was written.",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "description": "Process or review boundary that wrote the relation. This does not grant Memory approval.",
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "idea_capture",
+            "topic_lab",
+            "memory_ingestion",
+            "human_review",
+            "migration",
+            "other"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "description": "Logical job id, file path, issue key, or process name for the writer.",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "string",
+      "description": "Optional short explanation or source quote for why the edge exists.",
+      "maxLength": 300
+    },
+    "strength": {
+      "type": "number",
+      "description": "Optional weak edge strength from 0.0 to 1.0.",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "graph-relation.v1",
+      "default": "graph-relation.v1"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "relation_type": {
+            "const": "derived_from"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "from": {
+            "properties": {
+              "node_type": {
+                "enum": [
+                  "idea",
+                  "memory"
+                ]
+              }
+            }
+          },
+          "to": {
+            "properties": {
+              "node_type": {
+                "enum": [
+                  "idea",
+                  "memory"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "required": [
+        "node_type",
+        "id"
+      ],
+      "properties": {
+        "node_type": {
+          "type": "string",
+          "description": "Graph node lane for this endpoint.",
+          "enum": [
+            "idea",
+            "memory",
+            "topic_seed",
+            "inbox_item"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "description": "Node identity in its own lane. Idea IDs use idea-*, Memory IDs use memnode-*.",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "node_type": {
+                "const": "idea"
+              }
+            },
+            "required": [
+              "node_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "id": {
+                "pattern": "^idea-[0-9]{6}-[a-f0-9]{12}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "node_type": {
+                "const": "memory"
+              }
+            },
+            "required": [
+              "node_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "id": {
+                "pattern": "^memnode-[0-9]{6}-[a-f0-9]{16}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "node_type": {
+                "const": "topic_seed"
+              }
+            },
+            "required": [
+              "node_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "id": {
+                "pattern": "^dd-[A-Za-z0-9_-]{4,40}$"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$comment": "Write inspired_by when an Idea is captured from another node or source context. Write derived_from only when a node is intentionally transformed from a specific prior Idea or Memory. Relations may reference Memory nodes only after those nodes exist; they must not create or mutate Memory nodes."
+}
