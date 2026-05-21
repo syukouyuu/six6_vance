@@ -30,3 +30,19 @@ This reads only `memory/approved_decisions/latest-approved-seeds.jsonl`, validat
 `approved-decision.v2`, looks up existing FalkorDB `(:Memory)` nodes by
 `candidate_id`, then creates or updates `memory-node.v2` nodes. Each run writes an
 auditable JSONL report under `memory/ingestion/`.
+
+### 4. Audit Existing FalkorDB Memory Nodes
+Before cutting over a historical graph, export current `(:Memory)` node
+properties to JSONL and run:
+
+```bash
+python3 scripts/memory-graph-maintenance.py \
+  --export-jsonl memory/graph-audit/memory-export.jsonl \
+  --report-json memory/graph-audit/memory-audit-report.json \
+  --plan-jsonl memory/graph-audit/memory-migration-plan.jsonl \
+  --rollback-jsonl memory/graph-audit/memory-rollback.jsonl
+```
+
+This is intentionally separate from ingestion. It inventories existing fields,
+flags duplicates and dirty historical nodes, and prepares cleanup and rollback
+artifacts. See `docs/FALKORDB_MEMORY_CLEANUP_MIGRATION.md`.
