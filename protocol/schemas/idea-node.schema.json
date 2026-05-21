@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://six6.local/protocol/schemas/idea-node.schema.json",
+  "title": "six6 Idea Node",
+  "description": "One lightweight experimental Idea node that may share a graph with Memory nodes without inheriting Memory candidate, approval, or ingestion audit rules.",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "content",
+    "created_at",
+    "source",
+    "state",
+    "maturity",
+    "schema_version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable Idea node identity inside the graph. This is independent from Memory candidate_id and Memory.id.",
+      "pattern": "^idea-[0-9]{6}-[a-f0-9]{12}$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short human-readable idea title.",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "content": {
+      "type": "string",
+      "description": "Raw or lightly shaped idea text. Noise and speculation are allowed.",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "created_at": {
+      "type": "string",
+      "description": "Time when the idea node record was created.",
+      "format": "date-time"
+    },
+    "observed_at": {
+      "type": "string",
+      "description": "Optional source event time when it differs from created_at.",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "description": "Where this idea came from. Idea sources may be informal and do not imply Memory audit approval.",
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "daydream",
+            "topic_lab",
+            "manual_note",
+            "conversation",
+            "inbox",
+            "import",
+            "other"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "description": "Logical source path, event id, issue key, or process name.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "section": {
+          "type": "string",
+          "description": "Optional source section, heading, or local anchor.",
+          "maxLength": 120
+        }
+      },
+      "additionalProperties": false
+    },
+    "state": {
+      "type": "string",
+      "description": "Lifecycle state for the idea lane. This is not a Memory approval state.",
+      "enum": [
+        "raw",
+        "exploring",
+        "promising",
+        "parked",
+        "rejected",
+        "promoted"
+      ]
+    },
+    "maturity": {
+      "type": "integer",
+      "description": "Idea maturity signal from noisy seed to ready-for-promotion candidate. It does not satisfy Memory maturity or approval requirements.",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "tags": {
+      "type": "array",
+      "description": "Optional lightweight labels for clustering and browsing.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 40
+      },
+      "maxItems": 12,
+      "uniqueItems": true
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Optional weak confidence signal from 0.0 to 1.0.",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "idea-node.v1",
+      "default": "idea-node.v1"
+    }
+  },
+  "additionalProperties": false,
+  "$comment": "Idea nodes are allowed to be experimental, noisy, and reversible. Promotion to Memory requires a separate Memory candidate and approved-decision flow; an idea-node.v1 record must never be treated as an approved Memory record."
+}

@@ -23,6 +23,8 @@ testable, and safe to integrate into different OpenClaw deployments.
 - `memory/deprecated/YYYY-MM-DD-deprecated-decisions.jsonl`: machine-readable deprecated candidate audit records.
 - `memory/deprecated/deprecated_decisions.md`: optional human-readable deprecation notes paired with deprecated decision records.
 - FalkorDB `(:Memory)`: final graph node written by the ingestion executor from approved decisions.
+- FalkorDB `(:Idea)`: lightweight graph node for experimental ideas, noisy fragments, and explorations that are not Memory.
+- FalkorDB relation edges: typed graph edges connecting Idea, Memory, and selected source nodes without changing lane ownership.
 - `data/health.json`: runtime health heartbeat.
 - `data/evolution.md`: meditation evolution log.
 
@@ -34,6 +36,8 @@ testable, and safe to integrate into different OpenClaw deployments.
 - `schemas/approved-decision-v2.schema.json`
 - `schemas/deprecated-decision-v2.schema.json`
 - `schemas/memory-node-v2.schema.json`
+- `schemas/idea-node.schema.json`
+- `schemas/graph-relation.schema.json`
 - `schemas/health.schema.json`
 
 ## Memory Candidate Contract
@@ -181,6 +185,90 @@ If no node exists, generate `id`, copy the approved fields, set
 Example JSONL:
 
 - `examples/memory-nodes/valid-sample.jsonl`
+
+## Idea Node Contract
+
+`idea-node.schema.json` defines the `(:Idea)` node shape for the Idea lane.
+Idea nodes may live in the same FalkorDB graph as Memory nodes, but they are a
+separate protocol boundary. They are allowed to be experimental, noisy, weakly
+structured, and reversible.
+
+Required fields are `id`, `title`, `content`, `created_at`, `source`, `state`,
+`maturity`, and `schema_version`. The source is intentionally lightweight:
+`source.kind` and `source.ref` explain where the idea came from, but they do
+not imply Memory approval or Memory audit guarantees.
+
+`state` tracks the Idea lifecycle:
+
+- `raw`: captured fragment with minimal shaping.
+- `exploring`: being developed or connected to other graph nodes.
+- `promising`: may deserve review, implementation, or promotion.
+- `parked`: retained but not active.
+- `rejected`: kept for traceability but not pursued.
+- `promoted`: already moved into another lane or workflow.
+
+`maturity` is an Idea-lane signal from `0` to `5`. It must not be treated as
+Memory candidate maturity, and it does not satisfy the Memory approval chain.
+To become Memory, an Idea must first produce a separate
+`memory-candidate.v1`, then pass through `approved-decision.v2`, then be
+ingested into `memory-node.v2`.
+
+Generate Idea IDs deterministically when possible as:
+
+```text
+idea-<YYMMDD>-<sha256("idea-node.v1\n" + source.kind + "\n" + source.ref + "\n" + title + "\n" + content)[0:12]>
+```
+
+The uniqueness boundary is one `(:Idea)` node per captured idea record. Idea
+IDs must not reuse `candidate_id` or final `Memory.id` values.
+
+Example JSONL:
+
+- `examples/idea-nodes/valid-sample.jsonl`
+
+## Graph Relation Contract
+
+`graph-relation.schema.json` defines typed edges between graph nodes. Relations
+may connect `idea`, `memory`, `topic_seed`, and `inbox_item` endpoints, but
+they must not create or mutate the endpoint nodes. They only describe a graph
+edge written by a specific source boundary.
+
+Required fields are `id`, `relation_type`, `from`, `to`, `created_at`,
+`source`, and `schema_version`. Each endpoint has:
+
+- `node_type`: one of `idea`, `memory`, `topic_seed`, or `inbox_item`.
+- `id`: the node identity in its own lane, such as `idea-*` or `memnode-*`.
+
+Core relation types:
+
+- `inspired_by`: weak provenance. Write this when an Idea was captured because
+  another graph node, seed, inbox item, or Memory provided context. It does not
+  mean the new node is an audited derivative.
+- `derived_from`: stronger lineage. Write this only when a node intentionally
+  transforms a specific prior Idea or Memory into a new Idea or Memory-shaped
+  artifact.
+
+Additional relation types (`mentions`, `supports`, `contradicts`,
+`duplicates`) are available for browsing and clustering, but they are advisory
+edges and do not alter Memory approval state.
+
+### Relation Write Boundaries
+
+Write Idea-origin relations during Idea capture, Topic Lab exploration, or
+human review. Write Memory-origin relations only after the referenced
+`(:Memory)` node exists, usually during or after Memory ingestion. A relation
+may reference a Memory node, but it must never grant approval, create a Memory
+node, change `memory-node.v2`, or bypass the approved-decision path.
+
+Generate relation IDs deterministically when possible as:
+
+```text
+rel-<YYMMDD>-<sha256("graph-relation.v1\n" + relation_type + "\n" + from.node_type + ":" + from.id + "\n" + to.node_type + ":" + to.id)[0:16]>
+```
+
+Example JSONL:
+
+- `examples/graph-relations/valid-sample.jsonl`
 
 ## Closed Loop
 
