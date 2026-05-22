@@ -12,6 +12,11 @@ from runtime_llm import call_llm as runtime_call_llm
 
 logger = None
 
+
+class MeditationError(RuntimeError):
+    pass
+
+
 def log(msg):
     # Backward compatibility for any remaining calls
     if logger:
@@ -36,33 +41,14 @@ def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.3, m
         logger=logger,
     )
 
-def main():
-    parser = argparse.ArgumentParser(description="Run nightly meditation to consolidate memory.")
-    parser.add_argument("--base-dir", default=".", help="Base directory of the agent.")
-    parser.add_argument("--date", help="Date of the memory to process (YYYY-MM-DD). Defaults to yesterday for overnight runs.", default=default_meditation_date())
-    parser.add_argument("--api-base", default=os.environ.get("LLM_API_BASE", "https://api.openai.com/v1"), help="OpenAI-compatible API Base URL")
-    parser.add_argument("--api-key", default=os.environ.get("LLM_API_KEY", ""), help="API Key")
-    parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "gpt-4o"), help="Model to use")
-    parser.add_argument("--temperature", type=float, default=float(os.environ.get("MEDITATION_TEMPERATURE", "0.3")), help="Temperature for generation")
-    parser.add_argument("--api-type", default=os.environ.get("LLM_API_TYPE", ""), help="API Type (openai or anthropic)")
-    args = parser.parse_args()
-
-    # Initialize Logger
-    global logger
-    logger = setup_six6_logging("meditation", args.base_dir)
-
-    if not args.api_key:
-        logger.error("❌ API Key is required. Set LLM_API_KEY env var or use --api-key.")
-        raise SystemExit(1)
-
-
-    mem_path = os.path.join(args.base_dir, "MEMORY.md")
-    daily_path = os.path.join(args.base_dir, "memory", f"{args.date}.md")
-    evo_path = os.path.join(args.base_dir, "data", "evolution.md")
+def run_meditation(base_dir, date, api_base, api_key, model, temperature=0.3, api_type=None):
+    mem_path = os.path.join(base_dir, "MEMORY.md")
+    daily_path = os.path.join(base_dir, "memory", f"{date}.md")
+    evo_path = os.path.join(base_dir, "data", "evolution.md")
 
     if not os.path.exists(daily_path):
         log(f"⚠️ No daily memory found at {daily_path}. Skipping meditation.")
-        raise SystemExit(1)
+        raise MeditationError(f"No daily memory found at {daily_path}")
 
     with open(daily_path, "r", encoding="utf-8") as f:
         daily_memory = f.read()
@@ -89,36 +75,67 @@ Task:
 3. Output a brief 1-sentence reflection on how you evolved today wrapped in <evolution> tags.
 """
 
-    log(f"🧘 Initiating meditation for {args.date} using {args.model}...")
-    response = call_llm(args.api_base, args.api_key, args.model, prompt, args.api_type, args.temperature)
+    log(f"🧘 Initiating meditation for {date} using {model}...")
+    response = call_llm(api_base, api_key, model, prompt, api_type, temperature)
     if not response:
         log("❌ No response from LLM. Aborting.")
-        raise SystemExit(1)
+        raise MeditationError("No response from LLM")
 
     new_memory_match = re.search(r"<new_memory>\s*(.*?)\s*</new_memory>", response, re.DOTALL | re.IGNORECASE)
     evo_match = re.search(r"<evolution>\s*(.*?)\s*</evolution>", response, re.DOTALL | re.IGNORECASE)
 
-    if new_memory_match:
-        with open(mem_path, "w", encoding="utf-8") as f:
-            f.write(new_memory_match.group(1).strip())
-        log("✅ Core MEMORY.md updated.")
-
-    if evo_match:
-        os.makedirs(os.path.dirname(evo_path), exist_ok=True)
-        evo_text = evo_match.group(1).strip()
-        with open(evo_path, "a", encoding="utf-8") as f:
-            f.write(f"- **{args.date}**: {evo_text}\n")
-        log(f"🌱 Evolution log appended: {evo_text}")
-        return
-
     if not new_memory_match:
         log("❌ LLM output did not contain valid <new_memory> tags.")
         log(f"Raw LLM output snippet: {response[:500]}")
+        raise MeditationError("LLM output did not contain valid <new_memory> tags")
+
+    if not evo_match:
+        log("❌ LLM output did not contain valid <evolution> tags.")
+        log(f"Raw LLM output snippet: {response[:500]}")
+        raise MeditationError("LLM output did not contain valid <evolution> tags")
+
+    with open(mem_path, "w", encoding="utf-8") as f:
+        f.write(new_memory_match.group(1).strip())
+    log("✅ Core MEMORY.md updated.")
+
+    os.makedirs(os.path.dirname(evo_path), exist_ok=True)
+    evo_text = evo_match.group(1).strip()
+    with open(evo_path, "a", encoding="utf-8") as f:
+        f.write(f"- **{date}**: {evo_text}\n")
+    log(f"🌱 Evolution log appended: {evo_text}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Run nightly meditation to consolidate memory.")
+    parser.add_argument("--base-dir", default=".", help="Base directory of the agent.")
+    parser.add_argument("--date", help="Date of the memory to process (YYYY-MM-DD). Defaults to yesterday for overnight runs.", default=default_meditation_date())
+    parser.add_argument("--api-base", default=os.environ.get("LLM_API_BASE", "https://api.openai.com/v1"), help="OpenAI-compatible API Base URL")
+    parser.add_argument("--api-key", default=os.environ.get("LLM_API_KEY", ""), help="API Key")
+    parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "gpt-4o"), help="Model to use")
+    parser.add_argument("--temperature", type=float, default=float(os.environ.get("MEDITATION_TEMPERATURE", "0.3")), help="Temperature for generation")
+    parser.add_argument("--api-type", default=os.environ.get("LLM_API_TYPE", ""), help="API Type (openai or anthropic)")
+    args = parser.parse_args()
+
+    # Initialize Logger
+    global logger
+    logger = setup_six6_logging("meditation", args.base_dir)
+
+    if not args.api_key:
+        logger.error("❌ API Key is required. Set LLM_API_KEY env var or use --api-key.")
         raise SystemExit(1)
 
-    log("❌ LLM output did not contain valid <evolution> tags.")
-    log(f"Raw LLM output snippet: {response[:500]}")
-    raise SystemExit(1)
+    try:
+        run_meditation(
+            args.base_dir,
+            args.date,
+            args.api_base,
+            args.api_key,
+            args.model,
+            args.temperature,
+            args.api_type,
+        )
+    except MeditationError as exc:
+        logger.error("❌ Meditation failed: %s", exc)
+        raise SystemExit(1) from exc
 
 if __name__ == "__main__":
     main()

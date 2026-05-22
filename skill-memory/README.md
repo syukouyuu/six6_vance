@@ -46,3 +46,21 @@ python3 scripts/memory-graph-maintenance.py \
 This is intentionally separate from ingestion. It inventories existing fields,
 flags duplicates and dirty historical nodes, and prepares cleanup and rollback
 artifacts. See `docs/FALKORDB_MEMORY_CLEANUP_MIGRATION.md`.
+
+### 5. Rebuild Historical Meditation Outputs
+Use this when rebuilding `MEMORY.md` and `data/evolution.md` from raw daily
+memory files after an environment migration:
+
+```bash
+python3 scripts/backfill_memory.py \
+  --base-dir /path/to/agent/root \
+  --from 2026-04-01 \
+  --to 2026-05-22 \
+  --api-key "$LLM_API_KEY" \
+  --model gpt-4o
+```
+
+The script runs in rebuild mode by default: it clears `MEMORY.md` and
+`data/evolution.md`, then replays existing `memory/YYYY-MM-DD.md` files in
+date order. Missing dates are logged and skipped explicitly. Use `--append` only
+when you intentionally want to preserve existing outputs before replaying.
