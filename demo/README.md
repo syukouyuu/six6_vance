@@ -27,3 +27,22 @@ python3 skill-topic-lab/scripts/farm.py --base-dir demo --add-water demo-seed-1
 
 The demo uses only local files. It does not require GitHub writes unless you
 manually raise seed maturity high enough and run a planting tick.
+
+## Keeping the Demo Data Pristine
+
+Running pulses mutates `data/health.json` and consumes `data/inbox.jsonl`. If you
+want to run the demo without dirtying `git status`, pin those files locally:
+
+```bash
+git update-index --skip-worktree demo/data/health.json demo/data/inbox.jsonl
+```
+
+Note: skip-worktree is silent — pinned files show no changes in `git status` or
+`git diff`. To list pinned files or undo the pin:
+
+```bash
+git ls-files -v demo/data/ | grep '^S'
+git update-index --no-skip-worktree demo/data/health.json demo/data/inbox.jsonl
+```
+
+To restore the original demo data after running pulses: `git checkout -- demo/data/`.
