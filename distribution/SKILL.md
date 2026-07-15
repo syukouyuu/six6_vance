@@ -1,5 +1,7 @@
 # six6 Distribution Layer
 
+This file is for deployers/operators. For the agent-facing runtime interface, see the root-level [SKILL.md](../SKILL.md).
+
 ## When to Use This Layer
 
 Use the distribution layer when you want to:

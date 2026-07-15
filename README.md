@@ -9,7 +9,7 @@
 [![CI](https://github.com/ythx-101/six6/actions/workflows/ci.yml/badge.svg)](https://github.com/ythx-101/six6/actions/workflows/ci.yml)
 [![GitHub stars](https://img.shields.io/github/stars/ythx-101/six6?style=social)](https://github.com/ythx-101/six6)
 
-*Modular · Plug-and-Play · State via File System · Works everywhere*
+*Modular · State via File System · Works everywhere*
 
 [Architecture](#-architecture) · [Modules](#-the-6-modules) · [Quick Start](#-quick-start)
 
@@ -26,13 +26,15 @@ Current frameworks: "Here is a massive 1GB monolithic orchestrator with tight Py
 
 six6 decomposes the core cognitive functions of an AI Agent into **6 independent modules**. They do not import each other. They do not share memory space. They communicate entirely through a standardized set of files (Markdown & JSONL).
 
-To make this reusable for OpenClaw users, the repository also includes three supporting layers that sit underneath the six modules:
+**What six6 actually is.** This is a memory & cognition framework for agents, not a self-contained skill that works the moment it's installed. Running it means initializing a writable base directory, wiring one or more modules into cron (or systemd), and — for the memory pipeline in particular — committing to a standing human review step before anything gets written into FalkorDB. It is a small persistent system that happens to live in a skill directory, not a drop-in trick. In exchange, an agent gets durable, reviewable long-term memory and a slow background thought process instead of a context window that resets.
+
+The repository also includes three supporting layers that sit underneath the six modules:
 
 - `protocol/`: file contracts and schemas.
 - `runtime/`: init, validate, doctor, and pulse entrypoints.
 - `distribution/`: packaging guidance for install and migration.
 
-You can install just the memory system, or you can install the entire suite to create a living, breathing organic AI entity.
+The six modules are independently enable-able: install just `skill-memory` for basic short/long-term memory, or run the entire suite for a living, breathing organic AI entity with reflection, idle-time ideation, and a task loop.
 
 ## 🧬 Architecture
 
