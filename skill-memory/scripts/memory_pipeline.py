@@ -413,6 +413,36 @@ def review_report_main():
         print(path)
 
 
+def review_reply_main():
+    parser = argparse.ArgumentParser(description="Parse a Master's Discord review reply into review-decision JSONL.")
+    add_common_args(parser)
+    parser.add_argument("--candidates", help="Candidate JSONL path. Defaults to latest-memory-candidates.jsonl.")
+    parser.add_argument("--command", required=True, help="Original Discord review command from the Master.")
+    parser.add_argument(
+        "--out",
+        help="Output review JSONL path. Defaults to memory/review/latest-review-decisions.jsonl under base-dir.",
+    )
+    args = parser.parse_args()
+    candidates_path = args.candidates or os.path.join(args.base_dir, "memory", "candidates", "latest-memory-candidates.jsonl")
+    out_path = args.out or os.path.join(args.base_dir, "memory", "review", "latest-review-decisions.jsonl")
+    candidates = [
+        record.data
+        for record in load_jsonl(
+            candidates_path,
+            schema=load_schema("memory-candidate.v1", REPO_ROOT),
+            allow_missing=False,
+        )
+    ]
+    try:
+        decisions = parse_discord_review_command(args.command, candidates)
+    except ValueError as error:
+        parser.error(f"failed to parse Discord review command: {error}")
+    write_jsonl(out_path, decisions)
+    approved = sum(item["decision"] == "approved" for item in decisions)
+    deprecated = sum(item["decision"] == "deprecated" for item in decisions)
+    print(f"approved {approved} / deprecated {deprecated} / {out_path}")
+
+
 def decision_router_main():
     parser = argparse.ArgumentParser(description="Route reviewed memory decisions into approved/deprecated JSONL.")
     add_common_args(parser)

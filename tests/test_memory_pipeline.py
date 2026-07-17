@@ -2,6 +2,8 @@ import os
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -14,6 +16,7 @@ from memory_pipeline import (  # noqa: E402
     parse_discord_review_command,
     render_review_report,
     render_discord_review,
+    review_reply_main,
     route_decisions,
     split_rule_deprecations,
     write_candidate_batch,
@@ -128,6 +131,53 @@ class MemoryPipelineTests(unittest.TestCase):
             parse_discord_review_command("收 99，其余弃", candidates)
         with self.assertRaises(ValueError):
             parse_discord_review_command("收 01", candidates)
+
+    def test_review_reply_cli_writes_decisions_and_prints_summary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            candidates = self._review_candidates()
+            candidates_path = os.path.join(tmpdir, "candidates.jsonl")
+            out_path = os.path.join(tmpdir, "review-decisions.jsonl")
+            write_jsonl(candidates_path, candidates)
+
+            output = self._run_review_reply(
+                "--base-dir", tmpdir, "--candidates", candidates_path,
+                "--command", "收 01，其余弃", "--out", out_path,
+            )
+
+            self.assertIn(f"approved 1 / deprecated 1 / {out_path}", output)
+            self.assertEqual(
+                [record.data for record in load_jsonl(out_path)],
+                [
+                    {"candidate_id": candidates[0]["candidate_id"], "decision": "approved"},
+                    {"candidate_id": candidates[1]["candidate_id"], "decision": "deprecated", "reason": "Discord 其余弃"},
+                ],
+            )
+
+    def test_review_reply_cli_rejects_ambiguous_command_without_writing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            candidates_path = os.path.join(tmpdir, "candidates.jsonl")
+            out_path = os.path.join(tmpdir, "review-decisions.jsonl")
+            write_jsonl(candidates_path, self._review_candidates())
+
+            with self.assertRaises(SystemExit) as caught, redirect_stderr(StringIO()):
+                self._run_review_reply(
+                    "--base-dir", tmpdir, "--candidates", candidates_path,
+                    "--command", "收 01", "--out", out_path,
+                )
+
+            self.assertNotEqual(caught.exception.code, 0)
+            self.assertFalse(os.path.exists(out_path))
+
+    def _run_review_reply(self, *arguments):
+        original_argv = sys.argv
+        output = StringIO()
+        try:
+            sys.argv = ["memory-review-reply.py", *arguments]
+            with redirect_stdout(output):
+                review_reply_main()
+        finally:
+            sys.argv = original_argv
+        return output.getvalue()
 
     def _review_candidates(self):
         return [
