@@ -82,6 +82,13 @@
 - 与 T11 衔接：LLM 预审上线后消息中带预打勾标记，常态回复退化为单字 `确认`。
 - 验收：解析器有单测覆盖各口令形态及歧义拒绝；端到端演示一次"Discord 回复 → approved_decisions 落盘"。
 
+### T13. T12 收尾：口令解析器 CLI 入口 + SKILL.md 审核接线（2026-07-17 复查新增）
+- 现状：`memory_pipeline.py:288` 的 `parse_discord_review_command` 已实现且有单测，但**没有 CLI 入口**，agent 在 shell 里调用不到；SKILL.md 仍写着"审核流水线不归 agent 管"，没有 Discord 转发角色的说明。
+- 动作：
+  1. 在 `memory_pipeline.py` 新增 `review_reply_main()`，按现有 shim 模式加入口脚本 `skill-memory/scripts/memory-review-reply.py`。参数：`--base-dir`、`--candidates`（默认 latest）、`--command "<口令原文>"`、`--out`（默认 `memory/review/latest-review-decisions.jsonl`）。行为：解析成功 → 用 `write_jsonl` 落盘并打印汇总（`approved N / deprecated M / 文件路径`）；解析失败（含歧义）→ 非零退出并打印失败原因，**不写任何文件**。
+  2. 更新 SKILL.md：给 agent 增加"审核转发员"一节——允许它做且只做三件事：(a) 跑 `memory-review-report.py --format discord` 把卡片贴到频道；(b) 收到 Master 口令后跑 `memory-review-reply.py` 并把汇总回显给 Master；(c) 收到 Master 明确"确认"后跑 `memory-decision-router.py --review <out文件>`。保留原有禁令：agent 不得自行裁决、不得跳过确认步骤直接路由。
+- 验收：`review_reply_main` 有单测（成功/歧义拒绝/退出码）；SKILL.md 三步流程与脚本参数一一对应，端到端手工演练一遍。
+
 ## 建议执行顺序（一个任务一个 PR）
 - **第一批（可并行，互不冲突）**：T2、T7、T8。
 - **第二批（T4 与 T6 都动 runtime 入口，需串行）**：T4 → T6 → T3 → T5。
