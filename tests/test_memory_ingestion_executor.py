@@ -10,6 +10,8 @@ sys.path.append(os.path.join(ROOT, "skill-memory", "scripts"))
 
 from runtime_io import generate_memory_id, load_jsonl, write_jsonl  # noqa: E402
 from memory_ingestion_executor import (  # noqa: E402
+    RETURN_FIELDS,
+    _parse_redis_cli_rows,
     approved_to_memory_node,
     ingest_approved_decisions,
     write_ingestion_report,
@@ -133,6 +135,34 @@ class MemoryIngestionExecutorTests(unittest.TestCase):
 
             self.assertEqual(load_jsonl(path)[0].data["candidate_id"], "pro-260520-123456abcdef")
             self.assertEqual(load_jsonl(latest_path)[0].data["action"], "created")
+
+    def test_parse_redis_cli_rows_handles_real_non_tty_output_shape(self):
+        # redis-cli in a non-interactive subprocess prints one value per line:
+        # all column headers first, then data values in row-major order,
+        # then trailing stats lines. There is no "1) " nesting like the
+        # interactive-terminal renderer produces.
+        headers = "\n".join(f"m.{key}" for key in RETURN_FIELDS)
+        row1 = "\n".join(f"value-{key}-1" for key in RETURN_FIELDS)
+        row2 = "\n".join(f"value-{key}-2" for key in RETURN_FIELDS)
+        output = (
+            f"{headers}\n{row1}\n{row2}\n"
+            "Cached execution: 0\n"
+            "Query internal execution time: 0.123456 milliseconds\n"
+        )
+
+        rows = _parse_redis_cli_rows(output)
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0][0], f"value-{RETURN_FIELDS[0]}-1")
+        self.assertEqual(rows[1][0], f"value-{RETURN_FIELDS[0]}-2")
+
+    def test_parse_redis_cli_rows_handles_empty_result(self):
+        # A real empty MATCH result prints a blank line between the headers
+        # and the stats footer.
+        headers = "\n".join(f"m.{key}" for key in RETURN_FIELDS)
+        output = f"{headers}\n\nCached execution: 0\nQuery internal execution time: 0.1 milliseconds\n"
+
+        self.assertEqual(_parse_redis_cli_rows(output), [])
 
     def _approved_record(self):
         return {

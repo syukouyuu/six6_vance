@@ -40,11 +40,12 @@ class IngestionConflictError(RuntimeError):
 
 
 class FalkorRedisCliBackend:
-    def __init__(self, *, graph, redis_cli="redis-cli", host=None, port=None, password=None):
+    def __init__(self, *, graph, redis_cli="redis-cli", host=None, port=None, username=None, password=None):
         self.graph = graph
         self.redis_cli = redis_cli
         self.host = host
         self.port = port
+        self.username = username
         self.password = password
 
     def find_by_candidate_id(self, candidate_id):
@@ -82,16 +83,22 @@ class FalkorRedisCliBackend:
             command += ["-h", self.host]
         if self.port:
             command += ["-p", str(self.port)]
-        if self.password:
-            command += ["-a", self.password, "--no-auth-warning"]
-        command += ["GRAPH.QUERY", self.graph, query, "--compact"]
+        if self.username:
+            command += ["--user", self.username]
+        command += ["GRAPH.QUERY", self.graph, query]
         try:
-            completed = subprocess.run(command, check=True, capture_output=True, text=True)
+            environment = os.environ.copy()
+            if self.password:
+                environment["REDISCLI_AUTH"] = self.password
+            completed = subprocess.run(command, check=True, capture_output=True, text=True, env=environment)
         except FileNotFoundError as exc:
             raise RuntimeError(f"redis-cli not found: {self.redis_cli}") from exc
         except subprocess.CalledProcessError as exc:
             message = (exc.stderr or exc.stdout or str(exc)).strip()
             raise RuntimeError(f"FalkorDB query failed: {message}") from exc
+        output = completed.stdout.strip()
+        if output.startswith(("NOAUTH", "WRONGPASS", "ERR ", "Error:")):
+            raise RuntimeError(f"FalkorDB query failed: {output}")
         return completed.stdout
 
 
@@ -228,19 +235,24 @@ def _cypher_value(value):
 
 
 def _parse_redis_cli_rows(output):
-    rows = []
-    for line in output.splitlines():
-        text = line.strip()
-        if not text or text.startswith(("1) 1)", "1) 2)", "2) ", "3) ")):
-            continue
-        if text.startswith(("1) ", "2) ")):
-            cells = []
-            for part in text.split('"')[1::2]:
-                if part not in {f"m.{key}" for key in RETURN_FIELDS}:
-                    cells.append(part)
-            if cells:
-                rows.append(cells)
-    return rows
+    lines = output.splitlines()
+    while lines and (
+        lines[-1].startswith("Cached execution:")
+        or lines[-1].startswith("Query internal execution time:")
+    ):
+        lines.pop()
+    column_count = len(RETURN_FIELDS)
+    if len(lines) < column_count:
+        return []
+    data_lines = lines[column_count:]
+    # A zero-row match prints a single blank line where the data section
+    # would be, distinct from a real row whose trailing (missing) properties
+    # print as blank lines but still fill out a full column_count chunk.
+    if len(data_lines) == 1 and data_lines[0] == "":
+        return []
+    if len(data_lines) % column_count != 0:
+        raise RuntimeError(f"unexpected GRAPH.QUERY output shape: {len(data_lines)} data lines for {column_count} columns")
+    return [data_lines[i:i + column_count] for i in range(0, len(data_lines), column_count)]
 
 
 def ingestion_executor_main():
@@ -251,6 +263,7 @@ def ingestion_executor_main():
     parser.add_argument("--redis-cli", default=os.environ.get("REDIS_CLI", "redis-cli"), help="redis-cli executable path.")
     parser.add_argument("--redis-host", default=os.environ.get("FALKORDB_HOST"), help="FalkorDB host. Defaults to $FALKORDB_HOST.")
     parser.add_argument("--redis-port", default=os.environ.get("FALKORDB_PORT"), help="FalkorDB port. Defaults to $FALKORDB_PORT.")
+    parser.add_argument("--redis-user", default=os.environ.get("FALKORDB_USER"), help="FalkorDB ACL username. Defaults to $FALKORDB_USER.")
     parser.add_argument("--redis-password", default=os.environ.get("FALKORDB_PASS"), help="FalkorDB password. Defaults to $FALKORDB_PASS.")
     parser.add_argument("--ingested-at", help="UTC ingestion timestamp, useful for reproducible tests.")
     args = parser.parse_args()
@@ -261,6 +274,7 @@ def ingestion_executor_main():
         redis_cli=args.redis_cli,
         host=args.redis_host,
         port=args.redis_port,
+        username=args.redis_user,
         password=args.redis_password,
     )
     report = ingest_approved_decisions(input_path, backend, ingested_at=args.ingested_at)
