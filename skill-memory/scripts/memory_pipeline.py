@@ -278,11 +278,12 @@ def render_discord_review(candidates, *, date=None):
     if current or not pages:
         pages.append(current)
     total_pages = len(pages)
-    return [
-        f"记忆审核 | {date} | 共 {len(candidates)} 条 | 第 {index}/{total_pages} 页\n\n"
-        f"{'\n\n'.join(cards_for_page) if cards_for_page else '（暂无待审条目）'}\n\n{footer}"
-        for index, cards_for_page in enumerate(pages, start=1)
-    ]
+    messages = []
+    for index, cards_for_page in enumerate(pages, start=1):
+        body = "\n\n".join(cards_for_page) if cards_for_page else "（暂无待审条目）"
+        header = f"记忆审核 | {date} | 共 {len(candidates)} 条 | 第 {index}/{total_pages} 页\n\n"
+        messages.append(f"{header}{body}\n\n{footer}")
+    return messages
 
 
 def parse_discord_review_command(command, candidates):
