@@ -1,9 +1,11 @@
-__pycache__/
-*.pyc
 .env
-log/
 __pycache__/
-*.pyc
-*.sh
-*.log
-log/
+*.py[cod]
+*.bak*
+/.venv/
+
+# Runtime state belongs in a writable six6 base directory, not the source tree.
+/MEMORY.md
+/NOW.md
+/data/
+/log/

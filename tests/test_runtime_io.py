@@ -2,6 +2,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -10,6 +11,7 @@ sys.path.append(os.path.join(ROOT, "runtime", "scripts"))
 from runtime_io import (  # noqa: E402
     JsonlError,
     SchemaValidationError,
+    apply_env_defaults,
     generate_candidate_id,
     generate_memory_id,
     load_jsonl,
@@ -69,6 +71,17 @@ class RuntimeIoTests(unittest.TestCase):
             generate_memory_id(candidate_id, timestamp="2026-05-16T13:20:00Z"),
             "memnode-260516-8bd038a64d3476ca",
         )
+
+    def test_apply_env_defaults_loads_unset_values_without_overriding_environment(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env_path = os.path.join(tmpdir, ".env")
+            with open(env_path, "w", encoding="utf-8") as handle:
+                handle.write("LLM_API_KEY='from-file'\nLLM_MODEL=from-file-model\n")
+
+            with patch.dict(os.environ, {"LLM_MODEL": "from-environment"}, clear=True):
+                apply_env_defaults(env_path)
+                self.assertEqual(os.environ["LLM_API_KEY"], "from-file")
+                self.assertEqual(os.environ["LLM_MODEL"], "from-environment")
 
 
 if __name__ == "__main__":

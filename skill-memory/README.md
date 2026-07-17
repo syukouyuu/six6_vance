@@ -10,6 +10,16 @@ This module handles the foundational memory structures for the Agent. It does no
 
 ## Scripts
 
+候选生成默认会将命中协议“严禁入库”规则的条目自动写入
+`memory/deprecated_decisions/`，并从人工待审清单移除。需要完全退回人工审核时，
+在运行环境或 `.env` 中设置：
+
+```bash
+MEMORY_RULE_AUTO_DEPRECATE=false
+```
+
+自动弃只会废弃，不会自动核准；废弃记录带有 `decided_by: rule` 供抽查。
+
 ### 1. Append to Daily Memory
 ```bash
 python3 scripts/remember.py "Found a new way to optimize the Topic Lab using standard JSON." --base-dir /path/to/agent/root
@@ -24,7 +34,7 @@ This overwrites `NOW.md` so that the next agent session knows exactly what was h
 
 ### 3. Ingest Approved Decisions
 ```bash
-python3 scripts/memory-ingestion-executor.py --base-dir /path/to/agent/root --graph FreyaGraph
+python3 scripts/memory_ingestion_executor.py --base-dir /path/to/agent/root --graph FreyaGraph
 ```
 This reads only `memory/approved_decisions/latest-approved-seeds.jsonl`, validates
 `approved-decision.v2`, looks up existing FalkorDB `(:Memory)` nodes by
@@ -36,7 +46,7 @@ Before cutting over a historical graph, export current `(:Memory)` node
 properties to JSONL and run:
 
 ```bash
-python3 scripts/memory-graph-maintenance.py \
+python3 scripts/memory_graph_maintenance.py \
   --export-jsonl memory/graph-audit/memory-export.jsonl \
   --report-json memory/graph-audit/memory-audit-report.json \
   --plan-jsonl memory/graph-audit/memory-migration-plan.jsonl \

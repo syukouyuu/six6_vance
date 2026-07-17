@@ -50,6 +50,35 @@ def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
+def env_file_path(root=None):
+    return os.path.join(root or repo_root(), ".env")
+
+
+def load_env_file(path):
+    values = {}
+    if not os.path.exists(path):
+        return values
+    with open(path, "r", encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            if not key:
+                continue
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+                value = value[1:-1]
+            values[key] = value
+    return values
+
+
+def apply_env_defaults(path=None):
+    for key, value in load_env_file(path or env_file_path()).items():
+        os.environ.setdefault(key, value)
+
+
 def schema_path(schema_name, root=None):
     filename = SCHEMA_FILES.get(schema_name, schema_name)
     return os.path.join(root or repo_root(), "protocol", "schemas", filename)

@@ -44,6 +44,11 @@
       "type": "string",
       "const": "deprecated-decision.v2",
       "default": "deprecated-decision.v2"
+    },
+    "decided_by": {
+      "type": "string",
+      "enum": ["human", "rule", "llm-auto"],
+      "description": "Decision origin for audit and weekly sampling."
     }
   },
   "additionalProperties": false,

@@ -2,18 +2,24 @@ import os
 import re
 import datetime
 import argparse
+import shutil
 import sys
 
 # Inject runtime/scripts into sys.path to access logger_helper
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.append(os.path.join(repo_root, "runtime", "scripts"))
 from logger_helper import setup_six6_logging
+from runtime_io import apply_env_defaults, atomic_write_text
 from runtime_llm import call_llm as runtime_call_llm
 
 logger = None
 
 
 class MeditationError(RuntimeError):
+    pass
+
+
+class RecoverableMeditationError(MeditationError):
     pass
 
 
@@ -40,6 +46,24 @@ def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.3, m
         max_retries=max_retries,
         logger=logger,
     )
+
+
+def backup_and_write_memory(mem_path, content):
+    if os.path.exists(mem_path):
+        timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+        backup_path = f"{mem_path}.bak-{timestamp}"
+        shutil.copy2(mem_path, backup_path)
+        log(f"📦 Backed up existing MEMORY.md to {backup_path}.")
+    atomic_write_text(mem_path, content)
+
+
+def save_failed_meditation(base_dir, date, response):
+    failed_dir = os.path.join(base_dir, "log", "failed-meditations")
+    os.makedirs(failed_dir, exist_ok=True)
+    failed_path = os.path.join(failed_dir, f"{date}.txt")
+    atomic_write_text(failed_path, response)
+    log(f"📝 Saved invalid LLM output for retry at {failed_path}.")
+    return failed_path
 
 def run_meditation(base_dir, date, api_base, api_key, model, temperature=0.3, api_type=None):
     mem_path = os.path.join(base_dir, "MEMORY.md")
@@ -76,26 +100,30 @@ Task:
 """
 
     log(f"🧘 Initiating meditation for {date} using {model}...")
-    response = call_llm(api_base, api_key, model, prompt, api_type, temperature)
+    retry_prompt = prompt
+    response = ""
+    new_memory_match = evo_match = None
+    for attempt in range(2):
+        response = call_llm(api_base, api_key, model, retry_prompt, api_type, temperature)
+        if response:
+            new_memory_match = re.search(r"<new_memory>\s*(.*?)\s*</new_memory>", response, re.DOTALL | re.IGNORECASE)
+            evo_match = re.search(r"<evolution>\s*(.*?)\s*</evolution>", response, re.DOTALL | re.IGNORECASE)
+        if new_memory_match and evo_match:
+            break
+        if attempt == 0:
+            log("⚠️ LLM output lacked required tags; retrying once with a format correction.")
+            retry_prompt = f"{prompt}\n\nYour previous response was invalid. Output both <new_memory> and <evolution> tags exactly as requested; do not add untagged prose."
+
     if not response:
         log("❌ No response from LLM. Aborting.")
         raise MeditationError("No response from LLM")
-
-    new_memory_match = re.search(r"<new_memory>\s*(.*?)\s*</new_memory>", response, re.DOTALL | re.IGNORECASE)
-    evo_match = re.search(r"<evolution>\s*(.*?)\s*</evolution>", response, re.DOTALL | re.IGNORECASE)
-
-    if not new_memory_match:
-        log("❌ LLM output did not contain valid <new_memory> tags.")
+    if not new_memory_match or not evo_match:
+        log("❌ LLM output did not contain valid required tags.")
         log(f"Raw LLM output snippet: {response[:500]}")
-        raise MeditationError("LLM output did not contain valid <new_memory> tags")
+        failed_path = save_failed_meditation(base_dir, date, response)
+        raise RecoverableMeditationError(f"Invalid LLM output saved to {failed_path}")
 
-    if not evo_match:
-        log("❌ LLM output did not contain valid <evolution> tags.")
-        log(f"Raw LLM output snippet: {response[:500]}")
-        raise MeditationError("LLM output did not contain valid <evolution> tags")
-
-    with open(mem_path, "w", encoding="utf-8") as f:
-        f.write(new_memory_match.group(1).strip())
+    backup_and_write_memory(mem_path, new_memory_match.group(1).strip())
     log("✅ Core MEMORY.md updated.")
 
     os.makedirs(os.path.dirname(evo_path), exist_ok=True)
@@ -105,6 +133,7 @@ Task:
     log(f"🌱 Evolution log appended: {evo_text}")
 
 def main():
+    apply_env_defaults()
     parser = argparse.ArgumentParser(description="Run nightly meditation to consolidate memory.")
     parser.add_argument("--base-dir", default=".", help="Base directory of the agent.")
     parser.add_argument("--date", help="Date of the memory to process (YYYY-MM-DD). Defaults to yesterday for overnight runs.", default=default_meditation_date())
@@ -133,6 +162,9 @@ def main():
             args.temperature,
             args.api_type,
         )
+    except RecoverableMeditationError as exc:
+        logger.error("❌ Meditation can be retried: %s", exc)
+        raise SystemExit(75) from exc
     except MeditationError as exc:
         logger.error("❌ Meditation failed: %s", exc)
         raise SystemExit(1) from exc

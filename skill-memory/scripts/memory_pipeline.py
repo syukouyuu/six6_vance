@@ -22,6 +22,12 @@ from runtime_io import (  # noqa: E402
 DEFAULT_SOURCES = ("MEMORY.md", "data/evolution.md")
 DECISION_APPROVE = {"approve", "approved", "keep", "入库", "核准", "通过"}
 DECISION_DEPRECATE = {"deprecate", "deprecated", "discard", "reject", "废弃", "丢弃", "拒绝"}
+CATEGORY_ICONS = {"fact": "📌", "protocol": "📜", "lesson": "🎓", "relation": "💞", "evolution": "🌱"}
+RULE_DISCARD_KEYWORDS = {
+    "运维琐事": ("homebrew", "权限组", "仓库迁移", "路径调整", "brew "),
+    "框架配置": ("cron", "session 管理", "hook 配置", "openclaw 特有"),
+    "临时状态": ("软件安装记录", "api 有效期", "监控提醒", "安装完成"),
+}
 
 
 def utc_now():
@@ -180,17 +186,18 @@ def _extract_candidates(path, source_file, *, created_at, seen):
     return candidates
 
 
-def _approved_decision(candidate, approved_at):
+def _approved_decision(candidate, approved_at, decided_by="human"):
     decision = {
         key: candidate[key]
         for key in ("candidate_id", "topic", "content", "timestamp", "category", "maturity", "source", "source_file", "source_section")
     }
     decision["approved_at"] = approved_at
     decision["schema_version"] = "approved-decision.v2"
+    decision["decided_by"] = decided_by
     return decision
 
 
-def _deprecated_decision(candidate, reason, deprecated_at):
+def _deprecated_decision(candidate, reason, deprecated_at, decided_by="human"):
     return {
         "candidate_id": candidate["candidate_id"],
         "topic": candidate["topic"],
@@ -198,7 +205,126 @@ def _deprecated_decision(candidate, reason, deprecated_at):
         "source_file": candidate["source_file"],
         "deprecated_at": deprecated_at,
         "schema_version": "deprecated-decision.v2",
+        "decided_by": decided_by,
     }
+
+
+def split_rule_deprecations(candidates, *, decided_at=None, enabled=True):
+    """Return candidates requiring human review and protocol-forbidden auto-deprecations."""
+    if not enabled:
+        return list(candidates), []
+    decided_at = decided_at or utc_now()
+    pending = []
+    deprecated = []
+    for candidate in candidates:
+        reason = rule_deprecation_reason(candidate)
+        if reason:
+            deprecated.append(_deprecated_decision(candidate, reason, decided_at, decided_by="rule"))
+        else:
+            pending.append(candidate)
+    return pending, deprecated
+
+
+def rule_deprecation_reason(candidate):
+    text = " ".join(str(candidate.get(key, "")) for key in ("topic", "content", "source_file", "source_section")).lower()
+    for reason, keywords in RULE_DISCARD_KEYWORDS.items():
+        if any(keyword.lower() in text for keyword in keywords):
+            return f"规则自动弃：{reason}"
+    return None
+
+
+def render_rule_deprecation_digest(deprecated, *, date):
+    lines = [f"# 规则自动弃抽查摘要（{date}）", "", f"- 自动弃条目：{len(deprecated)}", ""]
+    for item in deprecated:
+        lines.append(f"- {item['candidate_id']} | {item['topic']} | {item['deprecation_reason']}")
+    return "\n".join(lines) + "\n"
+
+
+def write_rule_deprecation_digest(base_dir, deprecated, *, decided_at):
+    date = today_from_timestamp(decided_at)
+    path = os.path.join(base_dir, "memory", "deprecated_decisions", f"{date}-rule-auto-deprecations.md")
+    from runtime_io import atomic_write_text
+    atomic_write_text(path, render_rule_deprecation_digest(deprecated, date=date))
+    return path
+
+
+def _truncate_display(value, limit=80):
+    text = _clean_text(value, limit=limit + 1)
+    return text if len(text) <= limit else f"{text[:limit].rstrip()}…"
+
+
+def render_discord_review(candidates, *, date=None):
+    """Render phone-friendly review cards, returning one Discord-safe message per page."""
+    date = date or (today_from_timestamp(candidates[0]["created_at"]) if candidates else datetime.date.today().isoformat())
+    cards = []
+    for candidate in candidates:
+        icon = CATEGORY_ICONS[candidate["category"]]
+        cards.append(
+            f"{candidate['review_id']} {icon} {candidate['topic']}\n"
+            f"{_truncate_display(candidate['content'])}\n"
+            f"({candidate['category']} · {candidate['candidate_id']})"
+        )
+    footer = "回复：全收 / 全弃 / 收 01 03，其余弃 / 弃 02 原因:xxx，其余收"
+    pages = []
+    current = []
+    for card in cards:
+        trial = current + [card]
+        # Reserve enough header/footer space and enforce the 8-card page limit.
+        if current and (len(trial) > 8 or len("\n\n".join(trial)) + 180 > 2000):
+            pages.append(current)
+            current = [card]
+        else:
+            current = trial
+    if current or not pages:
+        pages.append(current)
+    total_pages = len(pages)
+    return [
+        f"记忆审核 | {date} | 共 {len(candidates)} 条 | 第 {index}/{total_pages} 页\n\n"
+        f"{'\n\n'.join(cards_for_page) if cards_for_page else '（暂无待审条目）'}\n\n{footer}"
+        for index, cards_for_page in enumerate(pages, start=1)
+    ]
+
+
+def parse_discord_review_command(command, candidates):
+    """Convert an unambiguous Discord reply into source-of-truth review JSONL records."""
+    text = re.sub(r"\s+", " ", str(command).strip()).replace(",", "，")
+    by_review_id = {candidate["review_id"]: candidate for candidate in candidates}
+    if len(by_review_id) != len(candidates):
+        raise ValueError("duplicate review_id in candidate batch")
+    if text == "全收":
+        return [{"candidate_id": item["candidate_id"], "decision": "approved"} for item in candidates]
+    if text == "全弃":
+        return [{"candidate_id": item["candidate_id"], "decision": "deprecated", "reason": "Discord 全弃"} for item in candidates]
+
+    match = re.fullmatch(r"收 ((?:\d{2,4} ?)+)，其余弃", text)
+    if match:
+        selected = _selected_review_ids(match.group(1), by_review_id)
+        return [
+            {"candidate_id": item["candidate_id"], "decision": "approved" if item["review_id"] in selected else "deprecated", **({} if item["review_id"] in selected else {"reason": "Discord 其余弃"})}
+            for item in candidates
+        ]
+
+    match = re.fullmatch(r"弃 (\d{2,4}) 原因[:：](.+)，其余收", text)
+    if match:
+        selected = _selected_review_ids(match.group(1), by_review_id)
+        reason = _clean_text(match.group(2), limit=240)
+        if not reason:
+            raise ValueError("deprecation reason cannot be empty")
+        return [
+            {"candidate_id": item["candidate_id"], "decision": "deprecated", "reason": reason} if item["review_id"] in selected else {"candidate_id": item["candidate_id"], "decision": "approved"}
+            for item in candidates
+        ]
+    raise ValueError("ambiguous or unsupported Discord review command")
+
+
+def _selected_review_ids(raw_ids, by_review_id):
+    review_ids = raw_ids.split()
+    if len(set(review_ids)) != len(review_ids):
+        raise ValueError("duplicate review_id in command")
+    unknown = [review_id for review_id in review_ids if review_id not in by_review_id]
+    if unknown:
+        raise ValueError(f"unknown review_id: {', '.join(unknown)}")
+    return set(review_ids)
 
 
 def _records_for_validation(items, path):
@@ -257,7 +383,12 @@ def candidate_generator_main():
     args = parser.parse_args()
     created_at = args.created_at or utc_now()
     candidates = generate_candidates(args.base_dir, source_files=tuple(args.sources or DEFAULT_SOURCES), created_at=created_at)
+    rule_auto_deprecate = os.environ.get("MEMORY_RULE_AUTO_DEPRECATE", "true").strip().lower() not in {"0", "false", "no", "off"}
+    candidates, rule_deprecated = split_rule_deprecations(candidates, decided_at=created_at, enabled=rule_auto_deprecate)
     paths = write_candidate_batch(args.base_dir, candidates, created_at=created_at)
+    if rule_deprecated:
+        write_decision_batches(args.base_dir, [], rule_deprecated, decided_at=created_at)
+        paths += (write_rule_deprecation_digest(args.base_dir, rule_deprecated, decided_at=created_at),)
     print(f"generated {len(candidates)} candidates")
     for path in paths:
         print(path)
@@ -267,10 +398,15 @@ def review_report_main():
     parser = argparse.ArgumentParser(description="Render a human review report from memory-candidate.v1 JSONL.")
     add_common_args(parser)
     parser.add_argument("--candidates", help="Candidate JSONL path. Defaults to latest-memory-candidates.jsonl.")
+    parser.add_argument("--format", choices=["markdown", "discord"], default="markdown")
     args = parser.parse_args()
     created_at = args.created_at or utc_now()
     candidates_path = args.candidates or os.path.join(args.base_dir, "memory", "candidates", "latest-memory-candidates.jsonl")
     candidates = [record.data for record in load_jsonl(candidates_path, schema=load_schema("memory-candidate.v1", REPO_ROOT), allow_missing=False)]
+    if args.format == "discord":
+        for message in render_discord_review(candidates, date=today_from_timestamp(created_at)):
+            print(message)
+        return
     paths = write_review_report(args.base_dir, candidates, created_at=created_at)
     print(f"wrote review report for {len(candidates)} candidates")
     for path in paths:

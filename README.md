@@ -6,8 +6,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-blue.svg)](https://github.com/openclaw/openclaw)
-[![CI](https://github.com/ythx-101/six6/actions/workflows/ci.yml/badge.svg)](https://github.com/ythx-101/six6/actions/workflows/ci.yml)
-[![GitHub stars](https://img.shields.io/github/stars/ythx-101/six6?style=social)](https://github.com/ythx-101/six6)
+[![CI](https://github.com/syukouyuu/six6_vance/actions/workflows/ci.yml/badge.svg)](https://github.com/syukouyuu/six6_vance/actions/workflows/ci.yml)
+[![GitHub stars](https://img.shields.io/github/stars/syukouyuu/six6_vance?style=social)](https://github.com/syukouyuu/six6_vance)
 
 *Modular · State via File System · Works everywhere*
 
@@ -71,7 +71,7 @@ Read the detailed [ARCHITECTURE.md](ARCHITECTURE.md) for data flow specification
 
 1. Clone the repository into your skills directory:
    ```bash
-   git clone https://github.com/ythx-101/six6.git
+   git clone https://github.com/syukouyuu/six6_vance.git
    ```
 2. Check the `ARCHITECTURE.md` file to understand the required file structures.
 3. Hook any or all modules into your agent's cron or trigger system.
@@ -95,6 +95,21 @@ Read the detailed [ARCHITECTURE.md](ARCHITECTURE.md) for data flow specification
    python3 runtime/scripts/six6.py pulse heartbeat --base-dir demo
    ```
 
+`demo/` is sample state only. Keep live agent state in a separate writable base
+directory; the repository root intentionally does not track `MEMORY.md`,
+`NOW.md`, `data/`, or `log/`.
+
 ## 📄 License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
+## Development
+
+Run tests in an isolated environment:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements-dev.txt
+python -m pytest
+```

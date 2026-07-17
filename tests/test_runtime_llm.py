@@ -65,13 +65,16 @@ class RuntimeLlmTests(unittest.TestCase):
             temperature=0.4,
         )
 
-        url, _, payload = build_provider_request(request, "anthropic")
+        url, headers, payload = build_provider_request(request, "anthropic")
         content = parse_provider_response(
             {"content": [{"type": "text", "text": "one"}, {"type": "text", "text": " two"}]},
             "anthropic",
         )
 
         self.assertEqual(url, "https://api.example.com/anthropic/v1/messages")
+        self.assertEqual(headers["x-api-key"], "secret")
+        self.assertEqual(headers["anthropic-version"], "2023-06-01")
+        self.assertNotIn("Authorization", headers)
         self.assertEqual(payload["max_tokens"], 4096)
         self.assertEqual(content, "one two")
 

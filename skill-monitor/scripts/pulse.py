@@ -5,9 +5,20 @@ import datetime
 import sys
 
 
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "runtime", "scripts"))
+from runtime_io import apply_env_defaults  # noqa: E402
+from logger_helper import setup_six6_logging  # noqa: E402
+
+
+logger = None
+
+
 def log(msg):
-    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{ts}] {msg}", flush=True)
+    if logger:
+        logger.info(msg)
+    else:
+        ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{ts}] {msg}", flush=True)
 
 
 def modules_root():
@@ -32,6 +43,9 @@ def run_module_script(agent_base_dir, module, script_name, extra_args=None):
         subprocess.run(cmd, check=True)
         return True
     except subprocess.CalledProcessError as e:
+        if e.returncode == 75:
+            log(f"⚠️ {module} returned retryable meditation output failure; rerun the nightly pulse after reviewing its saved output.")
+            return False
         log(f"❌ Error in {module}: process exited with error.")
         return False
     except Exception as e:
@@ -39,13 +53,19 @@ def run_module_script(agent_base_dir, module, script_name, extra_args=None):
         return False
 
 def main():
+    apply_env_defaults()
     parser = argparse.ArgumentParser(description="The Heartbeat/Pulse of the Organic OS.")
-    parser.add_argument("--base-dir", default=modules_root(), help="Writable base directory for the agent state.")
+    parser.add_argument("--base-dir", default=os.environ.get("SIX6_BASE_DIR"), help="Writable base directory for the agent state (or set SIX6_BASE_DIR).")
     parser.add_argument("pulse_type", choices=["heartbeat", "daily", "nightly", "idle"], help="Type of pulse to trigger.")
     args = parser.parse_args()
+    if not args.base_dir:
+        parser.error("--base-dir is required unless SIX6_BASE_DIR is set")
 
     pulse = args.pulse_type
-    agent_base_dir = args.base_dir
+    agent_base_dir = os.path.abspath(args.base_dir)
+
+    global logger
+    logger = setup_six6_logging("runtime", agent_base_dir)
 
     log(f"=== 💓 Initiating {pulse.upper()} pulse ===")
 

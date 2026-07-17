@@ -11,6 +11,7 @@ import sys
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.append(os.path.join(repo_root, "runtime", "scripts"))
 from logger_helper import setup_six6_logging
+from runtime_io import apply_env_defaults
 from runtime_llm import call_llm as runtime_call_llm
 
 logger = None
@@ -35,6 +36,7 @@ def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.8, m
     )
 
 def main():
+    apply_env_defaults()
     parser = argparse.ArgumentParser(description="Run random daydreaming to generate ideas.")
     parser.add_argument("--base-dir", default=".", help="Base directory of the agent.")
     parser.add_argument("--api-base", default=os.environ.get("LLM_API_BASE", "https://api.openai.com/v1"), help="OpenAI-compatible API Base URL")

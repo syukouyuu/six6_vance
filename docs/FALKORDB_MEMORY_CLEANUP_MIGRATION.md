@@ -11,7 +11,7 @@ Keep the three jobs separate:
 - **Inventory script**: exports existing `(:Memory)` node properties from the
   graph into JSONL. The export is a read-only snapshot and is the rollback
   source of truth.
-- **Maintenance script**: `skill-memory/scripts/memory-graph-maintenance.py`
+- **Maintenance script**: `skill-memory/scripts/memory_graph_maintenance.py`
   reads that export and writes an audit report, a migration action plan, and a
   rollback JSONL file. It does not write to FalkorDB directly.
 - **Audit report**: JSON summary of node counts, field inventory, schema
@@ -26,7 +26,7 @@ The ingestion executor remains separate. It only reads
 Create an export where each line is one `(:Memory)` node properties object:
 
 ```bash
-python3 skill-memory/scripts/memory-graph-maintenance.py \
+python3 skill-memory/scripts/memory_graph_maintenance.py \
   --export-jsonl memory/graph-audit/memory-export.jsonl \
   --report-json memory/graph-audit/memory-audit-report.json \
   --plan-jsonl memory/graph-audit/memory-migration-plan.jsonl \
@@ -139,4 +139,4 @@ Do not run the new ingestion executor against a graph until:
 - the latest migration plan and rollback file are archived next to the export
 
 After cutover, new writes must come only from
-`skill-memory/scripts/memory-ingestion-executor.py`.
+`skill-memory/scripts/memory_ingestion_executor.py`.

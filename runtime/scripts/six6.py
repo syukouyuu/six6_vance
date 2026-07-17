@@ -8,7 +8,7 @@ import sys
 # Inject current directory into sys.path to access logger_helper
 sys.path.append(os.path.dirname(__file__))
 from logger_helper import setup_six6_logging
-from runtime_io import SchemaValidationError, load_jsonl, load_schema
+from runtime_io import SchemaValidationError, apply_env_defaults, env_file_path, load_env_file, load_jsonl, load_schema
 
 MODULES = [
     "skill-memory",
@@ -30,35 +30,6 @@ def log(msg):
 
 def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-
-
-def env_file_path():
-    return os.path.join(repo_root(), ".env")
-
-
-def load_env_file(path):
-    values = {}
-    if not os.path.exists(path):
-        return values
-    with open(path, "r", encoding="utf-8") as handle:
-        for raw_line in handle:
-            line = raw_line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key = key.strip()
-            value = value.strip()
-            if not key:
-                continue
-            if value and len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
-                value = value[1:-1]
-            values[key] = value
-    return values
-
-
-def apply_env_defaults(path):
-    for key, value in load_env_file(path).items():
-        os.environ.setdefault(key, value)
 
 
 def default_base_dir():

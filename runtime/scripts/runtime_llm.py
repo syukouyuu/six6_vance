@@ -119,11 +119,12 @@ def normalize_api_type(api_type, api_base):
 
 
 def build_provider_request(request, provider):
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {request.api_key}",
-    }
     if provider == "anthropic":
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": request.api_key,
+            "anthropic-version": "2023-06-01",
+        }
         return (
             f"{request.api_base.rstrip('/')}/v1/messages",
             headers,
@@ -134,6 +135,10 @@ def build_provider_request(request, provider):
                 "temperature": float(request.temperature),
             },
         )
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {request.api_key}",
+    }
     return (
         f"{request.api_base.rstrip('/')}/chat/completions",
         headers,

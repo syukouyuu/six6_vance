@@ -9,6 +9,7 @@ sys.path.append(os.path.join(REPO_ROOT, "runtime", "scripts"))
 sys.path.append(os.path.join(REPO_ROOT, "skill-meditation", "scripts"))
 
 from logger_helper import setup_six6_logging  # noqa: E402
+from runtime_io import apply_env_defaults  # noqa: E402
 from meditate import MeditationError, run_meditation  # noqa: E402
 
 
@@ -139,6 +140,7 @@ def build_parser():
 
 
 def main():
+    apply_env_defaults()
     parser = build_parser()
     args = parser.parse_args()
     args.parser = parser

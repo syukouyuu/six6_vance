@@ -14,6 +14,10 @@
 7. **[入库]** `ingestion-executor`：只读取 `memory/approved_decisions/latest-approved-seeds.jsonl`，并为 FalkorDB 生成独立的最终 `Memory.id`。若 `candidate_id` 已存在于图库，则必须优先更新该节点，而不是创建重复节点。
 8. **[战报]** `daily-digest`：生成最终入库战报。
 
+当前自动化只允许执行“自动弃”：命中 §2 严禁入库规则的候选会以
+`decided_by: rule` 写入废弃记录，并从待审列表移除。核准仍必须由 Master
+确认；`decided_by` 可取 `human`、`rule` 或预留的 `llm-auto`，供审计使用。
+
 ## 2. 判别准则 (Purification Rules)
 ### ✅ 准许入库 (Keep)
 - **事实性质**：外部客观事实、投资变动、关键事件。

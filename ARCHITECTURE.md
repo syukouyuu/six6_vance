@@ -88,7 +88,7 @@ These two lanes must not be mixed.
 7. `memory-decision-router` splits reviewed records into:
    - `memory/approved_decisions/*.jsonl`
    - `memory/deprecated_decisions/*.jsonl`
-8. `memory-ingestion-executor` reads only:
+8. `memory_ingestion_executor` reads only:
    - `memory/approved_decisions/latest-approved-seeds.jsonl`
 9. Approved records are written into FalkorDB.
 

@@ -80,6 +80,11 @@
       "type": "string",
       "const": "approved-decision.v2",
       "default": "approved-decision.v2"
+    },
+    "decided_by": {
+      "type": "string",
+      "enum": ["human", "rule", "llm-auto"],
+      "description": "Decision origin. Approval remains human-only in the current rollout."
     }
   },
   "additionalProperties": false,

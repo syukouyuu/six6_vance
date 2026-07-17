@@ -74,7 +74,7 @@ class MemoryGraphMaintenanceTests(unittest.TestCase):
             old_argv = sys.argv
             try:
                 sys.argv = [
-                    "memory-graph-maintenance",
+                    "memory_graph_maintenance",
                     "--export-jsonl",
                     export_path,
                     "--report-json",
