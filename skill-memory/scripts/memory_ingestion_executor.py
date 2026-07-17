@@ -40,9 +40,12 @@ class IngestionConflictError(RuntimeError):
 
 
 class FalkorRedisCliBackend:
-    def __init__(self, *, graph, redis_cli="redis-cli"):
+    def __init__(self, *, graph, redis_cli="redis-cli", host=None, port=None, password=None):
         self.graph = graph
         self.redis_cli = redis_cli
+        self.host = host
+        self.port = port
+        self.password = password
 
     def find_by_candidate_id(self, candidate_id):
         returned = ", ".join(f"m.{key}" for key in RETURN_FIELDS)
@@ -74,7 +77,14 @@ class FalkorRedisCliBackend:
         self._query(query)
 
     def _query(self, query):
-        command = [self.redis_cli, "GRAPH.QUERY", self.graph, query, "--compact"]
+        command = [self.redis_cli]
+        if self.host:
+            command += ["-h", self.host]
+        if self.port:
+            command += ["-p", str(self.port)]
+        if self.password:
+            command += ["-a", self.password, "--no-auth-warning"]
+        command += ["GRAPH.QUERY", self.graph, query, "--compact"]
         try:
             completed = subprocess.run(command, check=True, capture_output=True, text=True)
         except FileNotFoundError as exc:
@@ -239,11 +249,20 @@ def ingestion_executor_main():
     parser.add_argument("--input", help="Approved JSONL path. Defaults to memory/approved_decisions/latest-approved-seeds.jsonl.")
     parser.add_argument("--graph", default=os.environ.get("SIX6_FALKOR_GRAPH", "FreyaGraph"), help="FalkorDB graph name.")
     parser.add_argument("--redis-cli", default=os.environ.get("REDIS_CLI", "redis-cli"), help="redis-cli executable path.")
+    parser.add_argument("--redis-host", default=os.environ.get("FALKORDB_HOST"), help="FalkorDB host. Defaults to $FALKORDB_HOST.")
+    parser.add_argument("--redis-port", default=os.environ.get("FALKORDB_PORT"), help="FalkorDB port. Defaults to $FALKORDB_PORT.")
+    parser.add_argument("--redis-password", default=os.environ.get("FALKORDB_PASS"), help="FalkorDB password. Defaults to $FALKORDB_PASS.")
     parser.add_argument("--ingested-at", help="UTC ingestion timestamp, useful for reproducible tests.")
     args = parser.parse_args()
 
     input_path = args.input or default_approved_path(args.base_dir)
-    backend = FalkorRedisCliBackend(graph=args.graph, redis_cli=args.redis_cli)
+    backend = FalkorRedisCliBackend(
+        graph=args.graph,
+        redis_cli=args.redis_cli,
+        host=args.redis_host,
+        port=args.redis_port,
+        password=args.redis_password,
+    )
     report = ingest_approved_decisions(input_path, backend, ingested_at=args.ingested_at)
     paths = write_ingestion_report(args.base_dir, report)
     print(json.dumps(report["summary"], ensure_ascii=False, separators=(",", ":")))
