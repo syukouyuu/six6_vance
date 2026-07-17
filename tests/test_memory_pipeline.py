@@ -42,6 +42,24 @@ class MemoryPipelineTests(unittest.TestCase):
             self.assertEqual(batch_path, os.path.join(tmpdir, "memory", "candidates", "2026-05-20-memory-candidates.jsonl"))
             self.assertEqual(load_jsonl(latest_path)[0].data, first[0])
 
+    def test_isolated_batch_does_not_write_a_latest_pointer(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            candidates = self._review_candidates()
+            output_dir = os.path.join(tmpdir, "monthly-review", "2026-02", "candidates")
+
+            (batch_path,) = write_candidate_batch(
+                tmpdir,
+                candidates,
+                created_at="2026-02-28T23:59:59Z",
+                output_dir=output_dir,
+                batch_label="2026-02",
+                write_latest=False,
+            )
+
+            self.assertEqual(batch_path, os.path.join(output_dir, "2026-02-memory-candidates.jsonl"))
+            self.assertTrue(os.path.isfile(batch_path))
+            self.assertFalse(os.path.exists(os.path.join(output_dir, "latest-memory-candidates.jsonl")))
+
     def test_review_report_shows_review_id_and_candidate_id(self):
         candidates = [
             {

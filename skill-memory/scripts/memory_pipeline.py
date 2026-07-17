@@ -58,12 +58,19 @@ def generate_candidates(base_dir, *, source_files=DEFAULT_SOURCES, created_at=No
     return candidates
 
 
-def write_candidate_batch(base_dir, candidates, *, created_at):
-    date = today_from_timestamp(created_at)
-    directory = os.path.join(base_dir, "memory", "candidates")
+def write_candidate_batch(base_dir, candidates, *, created_at, output_dir=None, batch_label=None, write_latest=True):
+    """Write a candidate batch.
+
+    ``output_dir`` and ``write_latest=False`` allow historical jobs to keep a
+    self-contained review artifact without mutating the live ``latest`` batch.
+    """
+    date = batch_label or today_from_timestamp(created_at)
+    directory = output_dir or os.path.join(base_dir, "memory", "candidates")
     batch_path = os.path.join(directory, f"{date}-memory-candidates.jsonl")
-    latest_path = os.path.join(directory, "latest-memory-candidates.jsonl")
     write_jsonl(batch_path, candidates)
+    if not write_latest:
+        return (batch_path,)
+    latest_path = os.path.join(directory, "latest-memory-candidates.jsonl")
     write_jsonl(latest_path, candidates)
     return batch_path, latest_path
 
@@ -381,12 +388,22 @@ def candidate_generator_main():
     parser = argparse.ArgumentParser(description="Generate memory-candidate.v1 JSONL from MEMORY.md and data/evolution.md.")
     add_common_args(parser)
     parser.add_argument("--source", action="append", dest="sources", help="Source file relative to base-dir; may be repeated.")
+    parser.add_argument("--output-dir", help="Directory for the candidate batch. Defaults to base-dir/memory/candidates.")
+    parser.add_argument("--batch-label", help="Filename label for the batch (for example 2026-02). Defaults to the generation date.")
+    parser.add_argument("--no-latest", action="store_true", help="Do not write or replace latest-memory-candidates.jsonl.")
     args = parser.parse_args()
     created_at = args.created_at or utc_now()
     candidates = generate_candidates(args.base_dir, source_files=tuple(args.sources or DEFAULT_SOURCES), created_at=created_at)
     rule_auto_deprecate = os.environ.get("MEMORY_RULE_AUTO_DEPRECATE", "true").strip().lower() not in {"0", "false", "no", "off"}
     candidates, rule_deprecated = split_rule_deprecations(candidates, decided_at=created_at, enabled=rule_auto_deprecate)
-    paths = write_candidate_batch(args.base_dir, candidates, created_at=created_at)
+    paths = write_candidate_batch(
+        args.base_dir,
+        candidates,
+        created_at=created_at,
+        output_dir=args.output_dir,
+        batch_label=args.batch_label,
+        write_latest=not args.no_latest,
+    )
     if rule_deprecated:
         write_decision_batches(args.base_dir, [], rule_deprecated, decided_at=created_at)
         paths += (write_rule_deprecation_digest(args.base_dir, rule_deprecated, decided_at=created_at),)

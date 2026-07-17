@@ -33,6 +33,10 @@ python3 scripts/update_now.py "Currently researching HTTP 402 protocols for x402
 This overwrites `NOW.md` so that the next agent session knows exactly what was happening.
 
 ### 3. Ingest Approved Decisions
+Requires `redis-cli` on PATH in the environment that runs this script (install
+via `apt-get install redis-tools` or equivalent). It is invoked directly as a
+subprocess, so make sure it's installed wherever this script actually runs.
+
 ```bash
 python3 scripts/memory_ingestion_executor.py --base-dir /path/to/agent/root --graph FreyaGraph
 ```
