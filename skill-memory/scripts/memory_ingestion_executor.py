@@ -2,8 +2,10 @@ import argparse
 import datetime
 import json
 import os
-import subprocess
 import sys
+
+from falkordb import FalkorDB
+from redis.exceptions import RedisError
 
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -39,67 +41,40 @@ class IngestionConflictError(RuntimeError):
     pass
 
 
-class FalkorRedisCliBackend:
-    def __init__(self, *, graph, redis_cli="redis-cli", host=None, port=None, username=None, password=None):
-        self.graph = graph
-        self.redis_cli = redis_cli
-        self.host = host
-        self.port = port
-        self.username = username
-        self.password = password
+class FalkorGraphBackend:
+    def __init__(self, *, graph, host="localhost", port=6379, username=None, password=None):
+        db = FalkorDB(host=host, port=port, username=username, password=password)
+        self._graph = db.select_graph(graph)
 
     def find_by_candidate_id(self, candidate_id):
         returned = ", ".join(f"m.{key}" for key in RETURN_FIELDS)
-        query = (
-            "MATCH (m:Memory {candidate_id: "
-            f"{_cypher_string(candidate_id)}"
-            f"}}) RETURN {returned} LIMIT 2"
+        result = self._query(
+            f"MATCH (m:Memory {{candidate_id: $candidate_id}}) RETURN {returned} LIMIT 2",
+            {"candidate_id": candidate_id},
         )
-        output = self._query(query)
-        rows = _parse_redis_cli_rows(output)
+        rows = result.result_set
         if len(rows) > 1:
             raise IngestionConflictError(f"multiple Memory nodes found for candidate_id {candidate_id!r}")
         if not rows:
             return None
-        row = rows[0]
-        return {key: value for key, value in zip(RETURN_FIELDS, row)}
+        return {key: value for key, value in zip(RETURN_FIELDS, rows[0])}
 
     def create_memory(self, memory):
-        fields = ", ".join(f"{key}: {_cypher_value(value)}" for key, value in memory.items())
-        self._query(f"CREATE (:Memory {{{fields}}})")
+        fields = ", ".join(f"{key}: ${key}" for key in memory)
+        self._query(f"CREATE (:Memory {{{fields}}})", memory)
 
     def update_memory(self, memory):
-        assignments = ", ".join(f"m.{key} = {_cypher_value(memory[key])}" for key in MUTABLE_FIELDS if key in memory)
-        query = (
-            "MATCH (m:Memory {candidate_id: "
-            f"{_cypher_string(memory['candidate_id'])}"
-            f"}}) SET {assignments}"
+        assignments = ", ".join(f"m.{key} = ${key}" for key in MUTABLE_FIELDS if key in memory)
+        self._query(
+            f"MATCH (m:Memory {{candidate_id: $candidate_id}}) SET {assignments}",
+            memory,
         )
-        self._query(query)
 
-    def _query(self, query):
-        command = [self.redis_cli]
-        if self.host:
-            command += ["-h", self.host]
-        if self.port:
-            command += ["-p", str(self.port)]
-        if self.username:
-            command += ["--user", self.username]
-        command += ["GRAPH.QUERY", self.graph, query]
+    def _query(self, query, params):
         try:
-            environment = os.environ.copy()
-            if self.password:
-                environment["REDISCLI_AUTH"] = self.password
-            completed = subprocess.run(command, check=True, capture_output=True, text=True, env=environment)
-        except FileNotFoundError as exc:
-            raise RuntimeError(f"redis-cli not found: {self.redis_cli}") from exc
-        except subprocess.CalledProcessError as exc:
-            message = (exc.stderr or exc.stdout or str(exc)).strip()
-            raise RuntimeError(f"FalkorDB query failed: {message}") from exc
-        output = completed.stdout.strip()
-        if output.startswith(("NOAUTH", "WRONGPASS", "ERR ", "Error:")):
-            raise RuntimeError(f"FalkorDB query failed: {output}")
-        return completed.stdout
+            return self._graph.query(query, params=params)
+        except RedisError as exc:
+            raise RuntimeError(f"FalkorDB query failed: {exc}") from exc
 
 
 def utc_now():
@@ -220,58 +195,21 @@ def _result(action, candidate_id, path, line_no, error=None, memory_id=None):
     return result
 
 
-def _cypher_string(value):
-    return json.dumps(value, ensure_ascii=False)
-
-
-def _cypher_value(value):
-    if isinstance(value, str):
-        return _cypher_string(value)
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if value is None:
-        return "null"
-    return str(value)
-
-
-def _parse_redis_cli_rows(output):
-    lines = output.splitlines()
-    while lines and (
-        lines[-1].startswith("Cached execution:")
-        or lines[-1].startswith("Query internal execution time:")
-    ):
-        lines.pop()
-    column_count = len(RETURN_FIELDS)
-    if len(lines) < column_count:
-        return []
-    data_lines = lines[column_count:]
-    # A zero-row match prints a single blank line where the data section
-    # would be, distinct from a real row whose trailing (missing) properties
-    # print as blank lines but still fill out a full column_count chunk.
-    if len(data_lines) == 1 and data_lines[0] == "":
-        return []
-    if len(data_lines) % column_count != 0:
-        raise RuntimeError(f"unexpected GRAPH.QUERY output shape: {len(data_lines)} data lines for {column_count} columns")
-    return [data_lines[i:i + column_count] for i in range(0, len(data_lines), column_count)]
-
-
 def ingestion_executor_main():
     parser = argparse.ArgumentParser(description="Ingest approved-decision.v2 JSONL into FalkorDB Memory nodes.")
     parser.add_argument("--base-dir", default=".", help="Base directory containing memory/approved_decisions/.")
     parser.add_argument("--input", help="Approved JSONL path. Defaults to memory/approved_decisions/latest-approved-seeds.jsonl.")
     parser.add_argument("--graph", default=os.environ.get("SIX6_FALKOR_GRAPH", "FreyaGraph"), help="FalkorDB graph name.")
-    parser.add_argument("--redis-cli", default=os.environ.get("REDIS_CLI", "redis-cli"), help="redis-cli executable path.")
-    parser.add_argument("--redis-host", default=os.environ.get("FALKORDB_HOST"), help="FalkorDB host. Defaults to $FALKORDB_HOST.")
-    parser.add_argument("--redis-port", default=os.environ.get("FALKORDB_PORT"), help="FalkorDB port. Defaults to $FALKORDB_PORT.")
+    parser.add_argument("--redis-host", default=os.environ.get("FALKORDB_HOST", "localhost"), help="FalkorDB host. Defaults to $FALKORDB_HOST.")
+    parser.add_argument("--redis-port", type=int, default=int(os.environ.get("FALKORDB_PORT", "6379")), help="FalkorDB port. Defaults to $FALKORDB_PORT.")
     parser.add_argument("--redis-user", default=os.environ.get("FALKORDB_USER"), help="FalkorDB ACL username. Defaults to $FALKORDB_USER.")
     parser.add_argument("--redis-password", default=os.environ.get("FALKORDB_PASS"), help="FalkorDB password. Defaults to $FALKORDB_PASS.")
     parser.add_argument("--ingested-at", help="UTC ingestion timestamp, useful for reproducible tests.")
     args = parser.parse_args()
 
     input_path = args.input or default_approved_path(args.base_dir)
-    backend = FalkorRedisCliBackend(
+    backend = FalkorGraphBackend(
         graph=args.graph,
-        redis_cli=args.redis_cli,
         host=args.redis_host,
         port=args.redis_port,
         username=args.redis_user,

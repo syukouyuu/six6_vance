@@ -2,6 +2,9 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import MagicMock, patch
+
+from redis.exceptions import ResponseError
 
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -11,7 +14,8 @@ sys.path.append(os.path.join(ROOT, "skill-memory", "scripts"))
 from runtime_io import generate_memory_id, load_jsonl, write_jsonl  # noqa: E402
 from memory_ingestion_executor import (  # noqa: E402
     RETURN_FIELDS,
-    _parse_redis_cli_rows,
+    FalkorGraphBackend,
+    IngestionConflictError,
     approved_to_memory_node,
     ingest_approved_decisions,
     write_ingestion_report,
@@ -136,33 +140,58 @@ class MemoryIngestionExecutorTests(unittest.TestCase):
             self.assertEqual(load_jsonl(path)[0].data["candidate_id"], "pro-260520-123456abcdef")
             self.assertEqual(load_jsonl(latest_path)[0].data["action"], "created")
 
-    def test_parse_redis_cli_rows_handles_real_non_tty_output_shape(self):
-        # redis-cli in a non-interactive subprocess prints one value per line:
-        # all column headers first, then data values in row-major order,
-        # then trailing stats lines. There is no "1) " nesting like the
-        # interactive-terminal renderer produces.
-        headers = "\n".join(f"m.{key}" for key in RETURN_FIELDS)
-        row1 = "\n".join(f"value-{key}-1" for key in RETURN_FIELDS)
-        row2 = "\n".join(f"value-{key}-2" for key in RETURN_FIELDS)
-        output = (
-            f"{headers}\n{row1}\n{row2}\n"
-            "Cached execution: 0\n"
-            "Query internal execution time: 0.123456 milliseconds\n"
-        )
+    def _backend_with_fake_graph(self):
+        with patch("memory_ingestion_executor.FalkorDB") as FakeFalkorDB:
+            fake_graph = MagicMock()
+            FakeFalkorDB.return_value.select_graph.return_value = fake_graph
+            backend = FalkorGraphBackend(graph="FreyaGraph", host="db", port=6379, password="secret")
+        return backend, fake_graph
 
-        rows = _parse_redis_cli_rows(output)
+    def test_find_by_candidate_id_sends_parameterized_query_and_maps_row(self):
+        backend, fake_graph = self._backend_with_fake_graph()
+        fake_result = MagicMock()
+        fake_result.result_set = [["v" + key for key in RETURN_FIELDS]]
+        fake_graph.query.return_value = fake_result
 
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0][0], f"value-{RETURN_FIELDS[0]}-1")
-        self.assertEqual(rows[1][0], f"value-{RETURN_FIELDS[0]}-2")
+        found = backend.find_by_candidate_id("cand-1")
 
-    def test_parse_redis_cli_rows_handles_empty_result(self):
-        # A real empty MATCH result prints a blank line between the headers
-        # and the stats footer.
-        headers = "\n".join(f"m.{key}" for key in RETURN_FIELDS)
-        output = f"{headers}\n\nCached execution: 0\nQuery internal execution time: 0.1 milliseconds\n"
+        query, kwargs = fake_graph.query.call_args
+        self.assertIn("$candidate_id", query[0])
+        self.assertEqual(kwargs["params"], {"candidate_id": "cand-1"})
+        self.assertEqual(found["id"], "v" + RETURN_FIELDS[0])
 
-        self.assertEqual(_parse_redis_cli_rows(output), [])
+    def test_find_by_candidate_id_returns_none_for_empty_result(self):
+        backend, fake_graph = self._backend_with_fake_graph()
+        fake_result = MagicMock()
+        fake_result.result_set = []
+        fake_graph.query.return_value = fake_result
+
+        self.assertIsNone(backend.find_by_candidate_id("missing"))
+
+    def test_find_by_candidate_id_raises_on_more_than_one_match(self):
+        backend, fake_graph = self._backend_with_fake_graph()
+        fake_result = MagicMock()
+        fake_result.result_set = [["a"] * len(RETURN_FIELDS), ["b"] * len(RETURN_FIELDS)]
+        fake_graph.query.return_value = fake_result
+
+        with self.assertRaises(IngestionConflictError):
+            backend.find_by_candidate_id("dup")
+
+    def test_create_memory_passes_native_python_values_as_params(self):
+        backend, fake_graph = self._backend_with_fake_graph()
+
+        backend.create_memory({"candidate_id": "cand-1", "maturity": 1, "content": "line1\nline2"})
+
+        query, kwargs = fake_graph.query.call_args
+        self.assertIn("CREATE (:Memory", query[0])
+        self.assertEqual(kwargs["params"], {"candidate_id": "cand-1", "maturity": 1, "content": "line1\nline2"})
+
+    def test_query_errors_are_wrapped_as_runtime_error(self):
+        backend, fake_graph = self._backend_with_fake_graph()
+        fake_graph.query.side_effect = ResponseError("syntax error")
+
+        with self.assertRaises(RuntimeError):
+            backend.find_by_candidate_id("cand-1")
 
     def _approved_record(self):
         return {
