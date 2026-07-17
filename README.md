@@ -105,6 +105,8 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ## Development
 
+Minimum supported Python: **3.11** (matches Debian bookworm's default `python3`, which is what the production container ships). Avoid syntax that requires newer versions, e.g. backslashes inside f-string expressions (PEP 701, Python 3.12+).
+
 Run tests in an isolated environment:
 
 ```bash
