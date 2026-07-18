@@ -27,6 +27,13 @@ owns them.
 
 ## 审核转发员
 
+无论是日常冥想还是月度冥想，提炼成功（exit 0）后都必须完成审核投递，二选一：
+
+1. 默认立即执行下方第 1 步，将审核卡片直接发送到 Master 的 **DM 频道**；
+2. 先简短汇报“提炼完成，N 条候选待审”，等待 Master 回复“开始人工审核”后，再发送审核卡片。
+
+禁止只贴服务器本地文件路径作为交付：Master 在外部无法访问服务器文件系统。
+
 记忆审核仍由 Master 裁决；agent 仅可作为审核转发员，且只能按以下三步操作：
 
 1. 运行 Discord 卡片报告并贴到指定频道：
@@ -44,6 +51,32 @@ owns them.
    ```
 
 agent 不得自行裁决，也不得跳过 Master 的确认步骤直接运行路由器。
+
+候选数据只能由管线脚本产出。agent 不得在上下文中手工编写、重写、翻译或“修正”候选 JSONL / 审核产物；发现候选内容有缺陷时，应向 Master 报告缺陷并指向对应脚本 bug，等待脚本修复后重跑 generator，绝不自造数据补救。
+
+## 月度审核衔接
+
+月度冥想使用 `--no-latest`，不会更新日常的 latest 指针。月度候选的实际路径为 `monthly-review/YYYY-MM/candidates/YYYY-MM-memory-candidates.jsonl`；因此 report、reply、router 三个脚本都必须显式传入 `--candidates`，不能依赖默认路径。
+
+月度提炼成功后，按以下命令生成并投递审核卡片、解析 Master 的审核口令，并在 Master 明确回复“确认”后才运行路由器：
+
+```bash
+python3 skill-memory/scripts/memory-review-report.py \
+  --base-dir /path/to/agent/root \
+  --candidates /path/to/agent/root/monthly-review/YYYY-MM/candidates/YYYY-MM-memory-candidates.jsonl \
+  --format discord
+
+python3 skill-memory/scripts/memory-review-reply.py \
+  --base-dir /path/to/agent/root \
+  --candidates /path/to/agent/root/monthly-review/YYYY-MM/candidates/YYYY-MM-memory-candidates.jsonl \
+  --command "收 01 03，其余弃" \
+  --out /path/to/agent/root/monthly-review/YYYY-MM/review/YYYY-MM-review-decisions.jsonl
+
+python3 skill-memory/scripts/memory-decision-router.py \
+  --base-dir /path/to/agent/root \
+  --candidates /path/to/agent/root/monthly-review/YYYY-MM/candidates/YYYY-MM-memory-candidates.jsonl \
+  --review /path/to/agent/root/monthly-review/YYYY-MM/review/YYYY-MM-review-decisions.jsonl
+```
 
 ## Not the Agent's Job
 

@@ -93,7 +93,9 @@
       "type": "string",
       "description": "Canonical audit string used to derive candidate_id.",
       "minLength": 1
-    }
+    },
+    "summarized": {"type": "boolean"},
+    "truncated": {"type": "boolean"}
   },
   "additionalProperties": false,
   "$comment": "Idempotency rule: candidate_id = '<prefix>-<YYMMDD>-<sha256(source_file + \"\\n\" + source_section + \"\\n\" + topic + \"\\n\" + content)[0:12]>'. Prefix maps to category: fact=fac, protocol=pro, lesson=les, relation=rel, evolution=evo; use mem only for legacy/general candidates."

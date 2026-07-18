@@ -111,3 +111,65 @@
 README「Python 依赖」章节注明：项目统一 Python 3.11（与 falkordb 容器 3.11.2 对齐），仓库根已有 `.python-version`；开发/测试用 `uv venv --python 3.11 .venv` + 装两个 requirements 文件；**代码不得使用 3.12+ 新语法**。另在 docs/llm-config.md 或 README 注明：宿主机跑 FalkorDB 集成测试需覆盖 `FALKORDB_HOST=127.0.0.1`（`.env` 里的 `falkordb-memory` 是 docker 网络内主机名）。
 
 **约束不变**：不动 `.env` 与密钥、不动 monthly-review 既有产出、测试用 `.venv/bin/python -m pytest tests/` 验证（56 通过为基线）。
+
+## 6. R4：审核卡片投递规范（2026-07-18 新增，仅改文档）
+
+**背景**：2026-03 月度冥想完成后，agent 只汇报了服务器本地文件路径链接，没有把审核卡片发到 Discord 频道。Master 在外部无法读取服务器文件，导致人工审核无法进行。根因：SKILL.md 的「审核转发员」三步只写了日常流（默认 `memory/candidates/latest-memory-candidates.jsonl`），全文未提月度冥想如何衔接审核流，agent 于是停在"跑完脚本、给出文件路径"这一步。
+
+**任务（只修改 `SKILL.md`，不改代码）**：
+
+1. 在「审核转发员」章节明确统一规则——**无论日常冥想还是月度冥想，提炼成功（exit 0）后必须二选一**：
+   - **默认行为**：立即执行第 1 步，把审核卡片直接发送给 Master（默认 **DM 频道**）；
+   - 或：先简短汇报"提炼完成，N 条候选待审"，等 Master 回复「开始人工审核」后再发送卡片。
+   - **禁止**只贴服务器本地文件路径当作交付——Master 在外部无法访问服务器文件系统。
+2. 新增「月度审核衔接」小节：月度候选位于 `monthly-review/YYYY-MM/candidates/YYYY-MM-memory-candidates.jsonl`（月度脚本用 `--no-latest`，不会更新 latest 指针）。因此月度流程中三个脚本（report / reply / router）都必须显式传 `--candidates`（reply 还需 `--out`，建议 `monthly-review/YYYY-MM/review/YYYY-MM-review-decisions.jsonl`），并给出完整命令示例。
+3. 保持既有安全约束原文不变：agent 不得自行裁决，router 仅在 Master 明确回复「确认」后运行。
+4. **新增禁令：候选数据只能由管线脚本产出**。agent 不得在上下文中手工编写、重写、翻译或"修正"候选 JSONL / 审核产物（2026-07-18 实例：agent 为绕过截断缺陷，连续手工产出 corrected-review / normalized-review / final-review 三套并存候选集，token 成本极高且脱离确定性管线的哈希谱系）。发现候选内容有缺陷时，正确动作是：向 Master 报告缺陷 + 指向对应脚本 bug，等待脚本修复后**重跑 generator**；绝不自造数据补救。
+
+**验收标准**：SKILL.md 中出现"月度"衔接说明与 DM 投递默认规则；三条命令示例的路径均指向月度包；日常流原有三步语义未被改动；出现"候选数据只能由脚本产出、禁止手工重制"的明确禁令。
+
+## 7. R5：候选生成器截断缺陷（2026-07-18 Kotoko 复核发现，必修）
+
+**事故**：2026-03 月度候选 11 条中多条内容残缺，Kotoko 拦截了入库。两个根因，均在 `skill-memory/scripts/memory_pipeline.py`：
+
+1. `_extract_candidates()`（约 150–170 行）逐行匹配 markdown 列表项：MEMORY.md 中折行的长条目被拆散，续行（不以 `-`/`*`/`#` 开头）被当作独立条目，产生从句子中间开始的候选（本次 03、05 号）。
+2. `_clean_text(item.group(2), limit=200)`（166 行）做的是 `text[:200]` 硬 substring，词切一半（本次 01、02、05、09 号长度恰为 199–200）。**limit 的正确语义是"浓缩到 200 字以内"，不是截断。**
+
+**任务**：
+
+1. **提取层（必做，纯解析）**：`_extract_candidates` 将续行合并进上一条列表项（遇到非列表、非标题、非空的行，拼接到当前条目再统一 `_clean_text`）。合并后先保留完整内容，不在提取阶段截断。
+2. **浓缩层（必做）**：条目合并后若超过 200 字符，调用 LLM（复用 `runtime_llm.call_llm_detailed` 与现有 LLM_* 配置）将内容**总结**为 ≤200 字符的完整陈述，保留关键事实（专名、数字、日期）。候选记录新增字段 `summarized: true` 以便审核者知晓。
+   - **语言统一（同层实现）**：新增 `--lang` 选项（默认读 env `MEMORY_LANG`，未设置则保持原文语言）。设置为 `zh` 时，浓缩 prompt 同时要求以中文输出（专名、命令、代码标识符保留原文）；对未超长但语言不符的条目也走一次 LLM 转写并打 `summarized: true`。背景：2026-07-18 agent 为对齐图谱语言在上下文手工翻译整套候选集——该需求合理，但必须由管线承担。退化路径（LLM 不可用）下不做翻译，保持原文并照常处理长度。
+3. **退化路径（必做）**：LLM 配置缺失或调用失败时，不得中断 generator：在**句子边界**（`。.!?；;` 等）截断到 ≤200 字符，并打字段 `truncated: true`，日志 WARNING 提示该条不完整。禁止再出现无标记的 mid-word 截断。
+4. **schema**：如 `memory-candidate.v1` schema 校验字段白名单，同步允许 `summarized`/`truncated`（可选布尔，默认缺省）。注意向后兼容既有候选文件。
+5. **测试**：新增用例覆盖 (a) 折行条目合并后内容完整、无 mid-sentence 开头；(b) >200 字符条目走 LLM 浓缩（mock endpoint）且 `summarized: true`；(c) LLM 不可用时句边界截断 + `truncated: true` + generator 仍 exit 0。
+6. **注意**：generator 目前被 cron 与 monthly 流程离线调用；引入 LLM 后 monthly 流程本身已有 LLM 配置，无影响；纯离线场景依赖第 3 条退化路径保底。
+
+**验收标准**：对 2026-03 staging 重跑 generator，产出候选无 mid-word 截断、无 mid-sentence 开头；超长条目带 `summarized: true` 且 ≤200 字符、事实完整；`grep -c '"truncated": true'` 在 LLM 可用时为 0；全部测试通过。
+
+**本次数据处置（2026-07-18 更新：2026-03 已关账）**：Master 已裁决并入库 6 条（来源 `monthly-review/2026-03/final-review/`，candidate_id 前缀 `fac-260331-`，VanceGraph 已验证恰好 6 节点）。因此**严禁**再对 2026-03 重跑 generator 后走 review/router 入库——新候选 ID 与已入库 ID 不同，碰撞检查拦不住语义重复，会造成双份记忆。R5 验收时可用 `monthly-review/2026-03/staging` 重跑 generator **仅对比产出质量（不入库、不发卡）**；修复后的完整流程从 2026-04 起启用。
+
+## 8. R6：自动版本标识（2026-07-18 新增）
+
+**目标**：所有产物可追溯到生成它的代码版本，且无需任何人手动维护版本号。
+
+**任务**：
+
+1. 在 `runtime/scripts/` 新增 `runtime_version.py`，提供 `get_version()`：执行 `git describe --tags --always --dirty`（cwd 为仓库根）；非 git 环境或命令失败时返回 `"unknown"`，绝不抛异常影响主流程。
+2. 三个入口（meditate、monthly_memory_meditation、memory-candidate-generator）启动日志加一行 `six6 version: <version>`；generator 与 monthly 的 manifest.json 新增字段 `skill_version`。
+3. 本次 R4+R5 合入后打基线 tag `v2.0.0`（annotated tag，一次性手动操作，之后 describe 自动递增描述）。
+4. （可选，Master 决定）配 GitHub Action + conventional commits 实现 tag 自动递升；不做也不影响第 1–3 条。
+
+**验收标准**：任意脚本运行日志含 version 行；manifest 含 `skill_version`；在无 tag / 非 git 目录下运行不报错（值为 hash 或 unknown）。
+
+## 9. R5.1：R5 首轮验收打回项（2026-07-18 staging 实测发现）
+
+实测方式：修复后代码对 `monthly-review/2026-03/staging` 重跑 generator（输出至隔离目录，未入库）。结构性目标达成（11 条全部 ≤200、无 mid-word 截断、truncated=0），但存在以下必修问题：
+
+1. **浓缩质量失控（必修）**：LLM 浓缩产出压缩黑话（实例：`ultrathinpasscoord+memorystew+stratan+polres+...`），形式合规但不可读。要求：(a) prompt 明确"输出必须为通顺完整的自然语言句子，禁止缩写拼接/电报体"；(b) 浓缩结果做质量校验（如超长或含大量无空格长 token 时视为失败并重试），`max_retries` 提到 ≥2；(c) 校验仍失败才走句边界退化路径。
+2. **LLM 调用时序（必修）**：当前对最终会被丢弃的条目也先调 LLM。`data/evolution.md` 的条目 topic 为日期（如 `2026-03-01`），被 `_clean_text` 的时间戳剥离正则清成空串后整条丢弃，但此时已各花一次 LLM 调用（本次 9 次全部浪费在此）。要求：topic/去重/丢弃判定前移到 LLM 浓缩之前，确认条目会被保留才调 LLM。
+3. **时间戳剥离正则误伤（必修）**：`_clean_text` 的 `^\[?([0-9: -]+)\]?\s*` 会把内容开头的日期整体吃掉（实例：`2026-03-31 (Tuesday) — ...` 变成 `(Tuesday) — ...`，形成半截句）。要求：仅剥离形如 `[HH:MM]`/`[HH:MM:SS]` 的时间戳标记，不得剥离日期开头的正文；补测试。
+4. **只读模式（必修）**：generator 即使指定 `--output-dir` 也会把规则废弃决策写回 `--base-dir`（本次质量测试覆盖了 staging 的 deprecated_decisions 时间戳）。要求：新增 `--no-side-effects`（或等价开关）：规则废弃产物随 `--output-dir` 走、不写 base-dir；monthly 运行器保持现行为不变。
+5. 另注：evolution.md 条目因 topic 为日期而全部被静默丢弃是否为预期行为，请在 fix 说明中明确一句（本次不要求改变该行为）。
+
+**验收标准**：重跑 staging 质量对比时 base-dir 无任何写入；无浪费 LLM 调用（日志核对调用次数 = 保留的超长/需转写条目数）；summarized 条目为通顺自然语言（人工抽查）；日期开头的条目内容完整；全部测试通过。

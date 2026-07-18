@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import logging
 import os
 import re
 import sys
@@ -10,6 +11,7 @@ sys.path.append(os.path.join(REPO_ROOT, "runtime", "scripts"))
 
 from runtime_io import (  # noqa: E402
     JsonlRecord,
+    apply_env_defaults,
     candidate_hash_input,
     generate_candidate_id,
     load_jsonl,
@@ -17,6 +19,7 @@ from runtime_io import (  # noqa: E402
     validate_records,
     write_jsonl,
 )
+from runtime_llm import call_llm_detailed  # noqa: E402
 
 
 DEFAULT_SOURCES = ("MEMORY.md", "data/evolution.md")
@@ -28,6 +31,7 @@ RULE_DISCARD_KEYWORDS = {
     "框架配置": ("cron", "session 管理", "hook 配置", "openclaw 特有"),
     "临时状态": ("软件安装记录", "api 有效期", "监控提醒", "安装完成"),
 }
+LOGGER = logging.getLogger(__name__)
 
 
 def utc_now():
@@ -38,7 +42,7 @@ def today_from_timestamp(timestamp):
     return timestamp[:10]
 
 
-def generate_candidates(base_dir, *, source_files=DEFAULT_SOURCES, created_at=None):
+def generate_candidates(base_dir, *, source_files=DEFAULT_SOURCES, created_at=None, llm_config=None, lang=None):
     created_at = created_at or utc_now()
     candidates = []
     seen = set()
@@ -47,7 +51,7 @@ def generate_candidates(base_dir, *, source_files=DEFAULT_SOURCES, created_at=No
         path = os.path.join(base_dir, source_file)
         if not os.path.exists(path):
             continue
-        candidates.extend(_extract_candidates(path, source_file, created_at=created_at, seen=seen))
+        candidates.extend(_extract_candidates(path, source_file, created_at=created_at, seen=seen, llm_config=llm_config, lang=lang))
 
     candidates.sort(key=lambda item: (item["source_file"], item["source_section"], item["topic"], item["content"]))
     for index, candidate in enumerate(candidates, start=1):
@@ -147,49 +151,48 @@ def write_decision_batches(base_dir, approved, deprecated, *, decided_at):
     return approved_path, approved_latest, deprecated_path, deprecated_latest
 
 
-def _extract_candidates(path, source_file, *, created_at, seen):
+def _extract_candidates(path, source_file, *, created_at, seen, llm_config=None, lang=None):
     section = "root"
     candidates = []
+    pending = None
+
+    def flush():
+        nonlocal pending
+        if pending is None:
+            return
+        topic = _clean_text(pending[0] or _topic_from_content(pending[1]), limit=60)
+        # evolution.md 的日期标题是时间索引而非候选主题，维持既有跳过行为。
+        if not topic or re.fullmatch(r"\d{4}-\d{2}-\d{2}", topic):
+            pending = None
+            return
+        content, flags = _prepare_candidate_content(_clean_text(pending[1], limit=None), llm_config=llm_config, lang=lang)
+        if topic and content:
+            category = _category_for(source_file, section, topic, content)
+            timestamp = _timestamp_for(source_file, created_at)
+            candidate_id = generate_candidate_id(category, source_file, section, topic, content, timestamp=timestamp)
+            if candidate_id not in seen:
+                seen.add(candidate_id)
+                candidates.append({"review_id": "00", "candidate_id": candidate_id, "topic": topic, "content": content, "timestamp": timestamp, "category": category, "maturity": 1, "source": source_file, "source_file": source_file, "source_section": section, "created_at": created_at, "schema_version": "memory-candidate.v1", "hash_input": candidate_hash_input(source_file, section, topic, content), **flags})
+        pending = None
     with open(path, "r", encoding="utf-8") as handle:
         for line in handle:
             raw = line.strip()
             if not raw:
+                flush()
                 continue
             heading = re.match(r"^(#{1,6})\s+(.+)$", raw)
             if heading:
+                flush()
                 section = _clean_text(heading.group(2), limit=80)
                 continue
             item = re.match(r"^[-*]\s+(?:\*\*([^*]+)\*\*:?\s*)?(.+)$", raw)
             if not item:
+                if pending:
+                    pending = (pending[0], pending[1] + " " + raw)
                 continue
-            topic = _clean_text(item.group(1) or _topic_from_content(item.group(2)), limit=60)
-            content = _clean_text(item.group(2), limit=200)
-            if not topic or not content:
-                continue
-            category = _category_for(source_file, section, topic, content)
-            timestamp = _timestamp_for(source_file, created_at)
-            hash_input = candidate_hash_input(source_file, section, topic, content)
-            candidate_id = generate_candidate_id(category, source_file, section, topic, content, timestamp=timestamp)
-            if candidate_id in seen:
-                continue
-            seen.add(candidate_id)
-            candidates.append(
-                {
-                    "review_id": "00",
-                    "candidate_id": candidate_id,
-                    "topic": topic,
-                    "content": content,
-                    "timestamp": timestamp,
-                    "category": category,
-                    "maturity": 1,
-                    "source": source_file,
-                    "source_file": source_file,
-                    "source_section": section,
-                    "created_at": created_at,
-                    "schema_version": "memory-candidate.v1",
-                    "hash_input": hash_input,
-                }
-            )
+            flush()
+            pending = (item.group(1), item.group(2))
+        flush()
     return candidates
 
 
@@ -373,10 +376,33 @@ def _topic_from_content(content):
     return re.split(r"[。.!?；;：:]", content, maxsplit=1)[0]
 
 
-def _clean_text(value, *, limit):
+def _prepare_candidate_content(content, *, llm_config=None, lang=None):
+    lang = (lang if lang is not None else os.environ.get("MEMORY_LANG", "")).lower()
+    translate = lang == "zh" and not re.search(r"[\u3400-\u9fff]", content)
+    if len(content) <= 200 and not translate:
+        return content, {}
+    config = llm_config or {"api_base": os.environ.get("LLM_API_BASE", ""), "api_key": os.environ.get("LLM_API_KEY", ""), "model": os.environ.get("LLM_MODEL", ""), "api_type": os.environ.get("LLM_API_TYPE", "")}
+    if all(config.get(key) for key in ("api_base", "api_key", "model")):
+        instruction = "使用中文输出，专名、命令和代码标识符保留原文。" if lang == "zh" else "保持原文语言。"
+        prompt = "将以下记忆浓缩为不超过200字符的一条通顺、完整的自然语言陈述，保留关键事实、专名、数字和日期。禁止缩写拼接、黑话、电报体；不要标题或 Markdown。" + instruction + "\n\n" + content
+        result, error = call_llm_detailed(config["api_base"], config["api_key"], config["model"], prompt, api_type=config.get("api_type") or None, temperature=0.2, max_retries=2)
+        result = _clean_text(result or "", limit=None)
+        if result and len(result) <= 200 and not re.search(r"[A-Za-z0-9]{20,}", result):
+            return result, {"summarized": True}
+        LOGGER.warning("LLM candidate summarization failed; using sentence-boundary fallback.")
+    else:
+        LOGGER.warning("LLM configuration unavailable; using sentence-boundary fallback.")
+    ends = [item.end() for item in re.finditer(r"[。！？；]|[.!?;](?=\s|$)", content) if item.end() <= 200]
+    if ends:
+        return content[:ends[-1]].rstrip(), {"truncated": True}
+    cut = content.rfind(" ", 0, 199)
+    return (content[:cut].rstrip() if cut > 0 else content[:199].rstrip()) + "…", {"truncated": True}
+
+
+def _clean_text(value, *, limit=None):
     text = re.sub(r"\s+", " ", str(value)).strip()
-    text = re.sub(r"^\[?([0-9: -]+)\]?\s*", "", text)
-    return text[:limit].rstrip()
+    text = re.sub(r"^\[(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?\]\s*", "", text)
+    return text[:limit].rstrip() if limit is not None else text
 
 
 def add_common_args(parser):
@@ -385,15 +411,18 @@ def add_common_args(parser):
 
 
 def candidate_generator_main():
+    apply_env_defaults()
     parser = argparse.ArgumentParser(description="Generate memory-candidate.v1 JSONL from MEMORY.md and data/evolution.md.")
     add_common_args(parser)
     parser.add_argument("--source", action="append", dest="sources", help="Source file relative to base-dir; may be repeated.")
     parser.add_argument("--output-dir", help="Directory for the candidate batch. Defaults to base-dir/memory/candidates.")
     parser.add_argument("--batch-label", help="Filename label for the batch (for example 2026-02). Defaults to the generation date.")
     parser.add_argument("--no-latest", action="store_true", help="Do not write or replace latest-memory-candidates.jsonl.")
+    parser.add_argument("--no-side-effects", action="store_true", help="Do not write rule-deprecation artifacts outside the requested output batch.")
+    parser.add_argument("--lang", default=os.environ.get("MEMORY_LANG", ""))
     args = parser.parse_args()
     created_at = args.created_at or utc_now()
-    candidates = generate_candidates(args.base_dir, source_files=tuple(args.sources or DEFAULT_SOURCES), created_at=created_at)
+    candidates = generate_candidates(args.base_dir, source_files=tuple(args.sources or DEFAULT_SOURCES), created_at=created_at, lang=args.lang)
     rule_auto_deprecate = os.environ.get("MEMORY_RULE_AUTO_DEPRECATE", "true").strip().lower() not in {"0", "false", "no", "off"}
     candidates, rule_deprecated = split_rule_deprecations(candidates, decided_at=created_at, enabled=rule_auto_deprecate)
     paths = write_candidate_batch(
@@ -404,7 +433,7 @@ def candidate_generator_main():
         batch_label=args.batch_label,
         write_latest=not args.no_latest,
     )
-    if rule_deprecated:
+    if rule_deprecated and not args.no_side_effects:
         write_decision_batches(args.base_dir, [], rule_deprecated, decided_at=created_at)
         paths += (write_rule_deprecation_digest(args.base_dir, rule_deprecated, decided_at=created_at),)
     print(f"generated {len(candidates)} candidates")

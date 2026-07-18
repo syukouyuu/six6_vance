@@ -2,6 +2,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 
@@ -26,6 +27,33 @@ from memory_pipeline import (  # noqa: E402
 
 
 class MemoryPipelineTests(unittest.TestCase):
+    def test_folded_item_is_merged_and_long_item_uses_marked_fallback(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            text = "第一句完整陈述。" * 30
+            with open(os.path.join(tmpdir, "MEMORY.md"), "w", encoding="utf-8") as handle:
+                handle.write("- **主题**: " + text + "\n  折行续写必须合并。\n")
+            candidates = generate_candidates(tmpdir, source_files=("MEMORY.md",), created_at="2026-05-20T12:00:00Z")
+            self.assertEqual(len(candidates), 1)
+            self.assertTrue(candidates[0]["truncated"])
+            self.assertLessEqual(len(candidates[0]["content"]), 200)
+
+    def test_chinese_fallback_truncates_at_sentence_boundary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "MEMORY.md"), "w", encoding="utf-8") as handle:
+                handle.write("- **主题**: " + "这是一句没有空格分隔的中文完整陈述。" * 20 + "\n")
+            candidates = generate_candidates(tmpdir, source_files=("MEMORY.md",), created_at="2026-05-20T12:00:00Z")
+            self.assertEqual(len(candidates), 1)
+            self.assertTrue(candidates[0]["truncated"])
+            self.assertLessEqual(len(candidates[0]["content"]), 200)
+            self.assertTrue(candidates[0]["content"].endswith("。"))
+
+    def test_long_item_is_marked_summarized_when_llm_returns_a_summary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "MEMORY.md"), "w", encoding="utf-8") as handle:
+                handle.write("- **主题**: " + ("项目 Alpha 于 2026-03-18 保留 42 条记录。" * 12))
+            with patch("memory_pipeline.call_llm_detailed", return_value=("项目 Alpha 于 2026-03-18 保留 42 条记录。", None)):
+                candidates = generate_candidates(tmpdir, source_files=("MEMORY.md",), created_at="2026-05-20T12:00:00Z", llm_config={"api_base": "http://mock", "api_key": "test", "model": "mock"})
+            self.assertTrue(candidates[0]["summarized"])
     def test_candidate_generation_is_stable_and_schema_valid(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             self._write_sources(tmpdir)
