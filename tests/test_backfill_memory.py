@@ -2,6 +2,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -28,6 +29,12 @@ class DummyLogger:
 
 
 class BackfillMemoryTests(unittest.TestCase):
+    def test_parser_has_no_openai_or_model_defaults(self):
+        with patch.dict(os.environ, {}, clear=True):
+            args = backfill_memory.build_parser().parse_args([])
+        self.assertEqual(args.api_base, "")
+        self.assertEqual(args.model, "")
+
     def test_requires_from_and_to_together(self):
         parser = backfill_memory.build_parser()
 

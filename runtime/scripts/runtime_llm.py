@@ -38,7 +38,8 @@ class LlmRequest:
     max_retries: int = 3
 
 
-def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.7, max_retries=3, logger=None):
+def call_llm_detailed(api_base, api_key, model, prompt, api_type=None, temperature=0.7, max_retries=3, logger=None, raise_on_error=False):
+    """Return ``(content, error)`` so callers can retain failure categories."""
     client = LlmClient(logger=logger)
     request = LlmRequest(
         api_base=api_base,
@@ -50,10 +51,21 @@ def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.7, m
         max_retries=max_retries,
     )
     try:
-        return client.complete(request)
+        return client.complete(request), None
     except LlmRuntimeError as exc:
-        _log(logger, "error", f"LLM request failed: {exc}", exc.metadata)
-        return None
+        _log(logger, "error", f"LLM request failed [{exc.category}]: {exc}", exc.metadata)
+        if raise_on_error:
+            raise
+        return None, exc
+
+
+def call_llm(api_base, api_key, model, prompt, api_type=None, temperature=0.7, max_retries=3, logger=None, raise_on_error=False):
+    content, error = call_llm_detailed(
+        api_base, api_key, model, prompt, api_type=api_type,
+        temperature=temperature, max_retries=max_retries, logger=logger,
+        raise_on_error=raise_on_error,
+    )
+    return content
 
 
 class LlmClient:

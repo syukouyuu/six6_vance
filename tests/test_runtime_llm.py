@@ -15,6 +15,7 @@ from runtime_llm import (  # noqa: E402
     LlmRequest,
     build_provider_request,
     call_llm,
+    call_llm_detailed,
     parse_provider_response,
 )
 
@@ -159,6 +160,11 @@ class RuntimeLlmTests(unittest.TestCase):
 
     def test_compat_call_returns_none_on_runtime_error(self):
         self.assertIsNone(call_llm("https://api.example.com/v1", "secret", "model-a", "hello", api_type="bogus"))
+
+    def test_detailed_call_exposes_error_category(self):
+        content, error = call_llm_detailed("https://api.example.com/v1", "secret", "model-a", "hello", api_type="bogus")
+        self.assertIsNone(content)
+        self.assertEqual(error.category, "configuration_error")
 
 
 if __name__ == "__main__":

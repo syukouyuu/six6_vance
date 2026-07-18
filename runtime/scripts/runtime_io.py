@@ -75,8 +75,13 @@ def load_env_file(path):
 
 
 def apply_env_defaults(path=None):
+    """Load missing environment variables and return keys supplied by the file."""
+    applied = set()
     for key, value in load_env_file(path or env_file_path()).items():
-        os.environ.setdefault(key, value)
+        if key not in os.environ:
+            os.environ[key] = value
+            applied.add(key)
+    return applied
 
 
 def schema_path(schema_name, root=None):

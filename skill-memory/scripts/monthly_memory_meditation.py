@@ -21,7 +21,7 @@ from memory_pipeline import (  # noqa: E402
     render_review_report,
     utc_now,
 )
-from meditate import MeditationError, run_meditation  # noqa: E402
+from meditate import MeditationError, RecoverableMeditationError, run_meditation  # noqa: E402
 from runtime_io import apply_env_defaults, atomic_write_text, load_jsonl, load_schema  # noqa: E402
 
 
@@ -60,12 +60,22 @@ def build_parser():
     parser.add_argument("--dry-run", action="store_true", help="Print the chronological plan without calling an LLM or writing files.")
     parser.add_argument("--allow-missing", action="store_true", help="Explicitly permit an incomplete month; missing dates are recorded in the manifest.")
     parser.add_argument("--resume", action="store_true", help="Resume an interrupted package from its staged evolution log.")
-    parser.add_argument("--api-base", default=os.environ.get("LLM_API_BASE", "https://api.openai.com/v1"))
+    parser.add_argument("--api-base", default=os.environ.get("LLM_API_BASE", ""))
     parser.add_argument("--api-key", default=os.environ.get("LLM_API_KEY", ""))
-    parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "gpt-4o"))
+    parser.add_argument("--model", default=os.environ.get("LLM_MODEL", ""))
     parser.add_argument("--temperature", type=float, default=float(os.environ.get("MEDITATION_TEMPERATURE", "0.3")))
     parser.add_argument("--api-type", default=os.environ.get("LLM_API_TYPE", ""))
     return parser
+
+
+def cli_supplied(argv, option):
+    return any(value == option or value.startswith(option + "=") for value in argv)
+
+
+def config_source(env_key, env_defaults, argv, option):
+    if cli_supplied(argv, option):
+        return "cli"
+    return ".env" if env_key in env_defaults else "env"
 
 
 def render_plan(month, present, missing, output_dir):
@@ -95,9 +105,23 @@ def completed_dates(staging):
         return re.findall(r"^- \*\*(\d{4}-\d{2}-\d{2})\*\*:", handle.read(), flags=re.MULTILINE)
 
 
+def write_manifest(output_dir, month, processed, missing, failed_dates, **extra):
+    manifest = {
+        "month": month.strftime("%Y-%m"), "processed_dates": processed,
+        "missing_dates": missing, "failed_dates": failed_dates,
+        "created_at": utc_now(), "latest_files_modified": False,
+    }
+    manifest.update(extra)
+    atomic_write_text(os.path.join(output_dir, "manifest.json"), json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+
+
 def run_month(args, logger=None):
     source_dir = os.path.abspath(args.source_dir)
     output_dir = os.path.abspath(args.output_dir or default_output_dir(source_dir, args.month))
+    if not args.dry_run:
+        missing_config = [name for name, value in (("LLM_API_BASE", args.api_base), ("LLM_MODEL", args.model), ("LLM_API_KEY", args.api_key)) if not value]
+        if missing_config:
+            raise ValueError("Missing " + ", ".join(missing_config) + ". Set LLM_* environment variables, add them to the repository .env, or pass CLI options.")
     present, missing = preflight(source_dir, args.month)
     if args.dry_run:
         print(render_plan(args.month, present, missing, output_dir))
@@ -108,25 +132,37 @@ def run_month(args, logger=None):
         raise ValueError(f"refusing to overwrite existing monthly package: {output_dir}")
     if args.resume and not os.path.isdir(output_dir):
         raise ValueError(f"cannot resume missing monthly package: {output_dir}")
-    if not args.api_key:
-        raise ValueError("API Key is required. Set LLM_API_KEY env var or use --api-key.")
 
     if not args.resume:
         os.makedirs(output_dir, exist_ok=False)
     logger = logger or setup_six6_logging("monthly-memory-meditation", output_dir)
+    sources = getattr(args, "config_sources", {"api_base": "env", "model": "env", "api_key": "env"})
+    provider = args.api_type or ("anthropic" if "anthropic" in args.api_base.lower() else "openai")
+    logger.info("LLM configuration: provider=%s api_base=%s model=%s config_source=api_base:%s,model:%s,api_key:%s", provider, args.api_base, args.model, sources["api_base"], sources["model"], sources["api_key"])
     staging = os.path.join(output_dir, "staging") if args.resume else prepare_staging(source_dir, output_dir, present)
     completed = completed_dates(staging)
     unknown = sorted(set(completed) - set(present))
     if unknown:
         raise ValueError("staged evolution contains dates outside the requested source set: " + ", ".join(unknown))
     processed = list(completed)
+    failed_dates = []
     for date_text in present:
         if date_text in completed:
             logger.info("Skipping already completed %s", date_text)
             continue
         logger.info("Meditating %s", date_text)
-        run_meditation(staging, date_text, args.api_base, args.api_key, args.model, args.temperature, args.api_type)
-        processed.append(date_text)
+        try:
+            run_meditation(staging, date_text, args.api_base, args.api_key, args.model, args.temperature, args.api_type)
+            processed.append(date_text)
+        except RecoverableMeditationError as exc:
+            failed_dates.append(date_text)
+            logger.warning("Recoverable meditation failure for %s: %s", date_text, exc)
+
+    if failed_dates:
+        write_manifest(output_dir, args.month, processed, missing, failed_dates)
+        failed_paths = [os.path.join(staging, "log", "failed-meditations", f"{date}.txt") for date in failed_dates]
+        logger.warning("Monthly package incomplete; failed dates: %s. Failed output paths: %s. Re-run with --resume.", ", ".join(failed_dates), ", ".join(failed_paths))
+        return 75
 
     # Invoke the normal generator against the staged monthly consolidation. Its
     # normal latest pointer is explicitly disabled, so the live workspace is
@@ -148,20 +184,24 @@ def run_month(args, logger=None):
     staged_deprecations = os.path.join(staging, "memory", "deprecated_decisions")
     if os.path.isdir(staged_deprecations):
         shutil.copytree(staged_deprecations, os.path.join(output_dir, "deprecated_decisions"))
-    manifest = {
-        "month": args.month.strftime("%Y-%m"), "processed_dates": processed,
-        "missing_dates": missing, "candidate_file": os.path.relpath(candidate_path, output_dir),
-        "review_file": os.path.relpath(review_path, output_dir), "created_at": utc_now(),
-        "latest_files_modified": False,
-    }
-    atomic_write_text(os.path.join(output_dir, "manifest.json"), json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+    write_manifest(output_dir, args.month, processed, missing, [],
+                   candidate_file=os.path.relpath(candidate_path, output_dir),
+                   review_file=os.path.relpath(review_path, output_dir))
     logger.info("Monthly package complete: %s", output_dir)
     return 0
 
 
 def main():
-    apply_env_defaults()
+    env_defaults = apply_env_defaults()
     args = build_parser().parse_args()
+    args.config_sources = {
+        key: config_source(env_key, env_defaults, sys.argv[1:], option)
+        for key, option, env_key in (
+            ("api_base", "--api-base", "LLM_API_BASE"),
+            ("model", "--model", "LLM_MODEL"),
+            ("api_key", "--api-key", "LLM_API_KEY"),
+        )
+    }
     try:
         raise SystemExit(run_month(args))
     except (MeditationError, ValueError) as exc:

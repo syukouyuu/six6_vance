@@ -79,9 +79,10 @@ class RuntimeIoTests(unittest.TestCase):
                 handle.write("LLM_API_KEY='from-file'\nLLM_MODEL=from-file-model\n")
 
             with patch.dict(os.environ, {"LLM_MODEL": "from-environment"}, clear=True):
-                apply_env_defaults(env_path)
+                applied = apply_env_defaults(env_path)
                 self.assertEqual(os.environ["LLM_API_KEY"], "from-file")
                 self.assertEqual(os.environ["LLM_MODEL"], "from-environment")
+                self.assertEqual(applied, {"LLM_API_KEY"})
 
 
 if __name__ == "__main__":

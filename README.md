@@ -17,6 +17,8 @@
 
 </div>
 
+See [docs/llm-config.md](docs/llm-config.md) for LLM configuration, scheduling, and failure-resume instructions.
+
 ---
 
 ## 😤 Problem
@@ -105,13 +107,16 @@ directory; the repository root intentionally does not track `MEMORY.md`,
 
 ### Python Dependencies
 
+The project standardizes on **Python 3.11**, matching Python 3.11.2 inside the FalkorDB container; the repository root's `.python-version` records this. Create development/testing environments with Python 3.11, and do not use Python 3.12+ syntax in code.
+
 - `requirements.txt`: Production dependencies. Currently only includes `falkordb>=1,<2` (FalkorDB's Python client SDK, used in `skill-memory` to connect to the graph database).
 - `requirements-dev.txt`: Development/testing dependencies. Currently only includes `pytest>=8,<10`.
 
 Installation (both files need to be installed, otherwise a `ModuleNotFoundError` will occur when hitting code paths dependent on `falkordb`):
 
 ```bash
-python -m pip install -r requirements.txt -r requirements-dev.txt
+uv venv --python 3.11 .venv
+VIRTUAL_ENV=$PWD/.venv uv pip install -r requirements.txt -r requirements-dev.txt
 ```
 
 Note: The `falkordb` Python package is merely a client library. It **is not** the FalkorDB service itself. Installing this package does not mean a usable graph database is present in your local/CI environment. See the next section.
@@ -191,6 +196,8 @@ pytest -m integration
 ```
 
 Requires a real FalkorDB to be running (see the "FalkorDB Service" section above), and connection parameters are similarly passed via `FALKORDB_HOST` / `FALKORDB_PORT` / `FALKORDB_USER` / `FALKORDB_PASS`. When unable to connect (`RedisError` / `ConnectionError` / `OSError` / `RuntimeError`, including NOAUTH), it will elegantly skip via `pytest.skip` instead of throwing an error and blowing up—so it's safe to run `pytest -m integration` even when there's no FalkorDB locally, it just won't be able to test actual communication layer issues.
+
+When running the FalkorDB integration tests on the host machine, explicitly override `FALKORDB_HOST=127.0.0.1`; the `falkordb-memory` value in `.env` is a hostname inside the Docker network and cannot be resolved from the host.
 
 The integration tests use an independent test graph `six6IntegrationTestGraph` (can be overridden with the `SIX6_TEST_FALKOR_GRAPH` environment variable) and won't touch the production `FreyaGraph`. Every `candidate_id` in the tests has a random uuid suffix to avoid conflicts, and self-created nodes are automatically deleted during teardown.
 

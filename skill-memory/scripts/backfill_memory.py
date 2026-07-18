@@ -131,9 +131,9 @@ def build_parser():
         action="store_false",
         help="Append mode: preserve existing MEMORY.md and data/evolution.md before replaying the date range.",
     )
-    parser.add_argument("--api-base", default=os.environ.get("LLM_API_BASE", "https://api.openai.com/v1"), help="OpenAI-compatible API Base URL")
+    parser.add_argument("--api-base", default=os.environ.get("LLM_API_BASE", ""), help="OpenAI-compatible API Base URL")
     parser.add_argument("--api-key", default=os.environ.get("LLM_API_KEY", ""), help="API Key")
-    parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "gpt-4o"), help="Model to use")
+    parser.add_argument("--model", default=os.environ.get("LLM_MODEL", ""), help="Model to use")
     parser.add_argument("--temperature", type=float, default=float(os.environ.get("MEDITATION_TEMPERATURE", "0.3")), help="Temperature for generation")
     parser.add_argument("--api-type", default=os.environ.get("LLM_API_TYPE", ""), help="API Type (openai or anthropic)")
     return parser
@@ -148,8 +148,9 @@ def main():
 
     logger = setup_six6_logging("memory-backfill", args.base_dir)
 
-    if not args.api_key:
-        logger.error("API Key is required. Set LLM_API_KEY env var or use --api-key.")
+    missing = [name for name, value in (("LLM_API_BASE", args.api_base), ("LLM_MODEL", args.model), ("LLM_API_KEY", args.api_key)) if not value]
+    if missing:
+        logger.error("Missing %s. Set LLM_* environment variables, add them to the repository .env, or pass CLI options.", ", ".join(missing))
         raise SystemExit(1)
 
     _, _, failed = run_backfill(args, logger)
