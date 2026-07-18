@@ -13,6 +13,8 @@
 
 [Architecture](#-architecture) · [Modules](#-the-6-modules) · [Quick Start](#-quick-start)
 
+[中文版 (Chinese Version)](README_zh.md)
+
 </div>
 
 ---
@@ -99,48 +101,48 @@ Read the detailed [ARCHITECTURE.md](ARCHITECTURE.md) for data flow specification
 directory; the repository root intentionally does not track `MEMORY.md`,
 `NOW.md`, `data/`, or `log/`.
 
-## 🔧 依赖与环境
+## 🔧 Dependencies & Environment
 
-### Python 依赖
+### Python Dependencies
 
-- `requirements.txt`：生产依赖，目前只有 `falkordb>=1,<2`（FalkorDB 的 Python client SDK，用于 `skill-memory` 里连接图数据库）。
-- `requirements-dev.txt`：开发/测试依赖，目前只有 `pytest>=8,<10`。
+- `requirements.txt`: Production dependencies. Currently only includes `falkordb>=1,<2` (FalkorDB's Python client SDK, used in `skill-memory` to connect to the graph database).
+- `requirements-dev.txt`: Development/testing dependencies. Currently only includes `pytest>=8,<10`.
 
-安装（两个文件都要装，否则跑到依赖 `falkordb` 包的代码路径时会报 `ModuleNotFoundError`）：
+Installation (both files need to be installed, otherwise a `ModuleNotFoundError` will occur when hitting code paths dependent on `falkordb`):
 
 ```bash
 python -m pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-注意：`falkordb` Python 包只是客户端库，**不等于** FalkorDB 服务本身；装了这个包不代表本地/CI 环境里有可用的图数据库，见下一节。
+Note: The `falkordb` Python package is merely a client library. It **is not** the FalkorDB service itself. Installing this package does not mean a usable graph database is present in your local/CI environment. See the next section.
 
-### FalkorDB 服务（真实图数据库，非可选项）
+### FalkorDB Service (Real Graph Database, Not Optional)
 
-`skill-memory` 的记忆写入/查询（`skill-memory/scripts/memory_ingestion_executor.py` 等）依赖一个真正在跑的 FalkorDB 实例（基于 Redis 协议的图数据库），**不是 mock 掉就能替代的可选组件**。
+Memory ingestion/querying in `skill-memory` (e.g., `skill-memory/scripts/memory_ingestion_executor.py`) depends on a genuinely running FalkorDB instance (a graph database based on the Redis protocol). **This is not an optional component that can be mocked out in production.**
 
-生产容器（`openclaw` 根目录的 `Dockerfile`）里已经装了 `redis-tools` 和 `falkordb` 这个 Python 包，但 **没有内置 FalkorDB 服务本身**——服务需要单独起一个容器，跟跑 six6 代码的容器是分开的两个东西。
+Production containers (like the `Dockerfile` in the root of `openclaw`) already have `redis-tools` and the `falkordb` Python package installed, but **do not include the FalkorDB service itself**. The service needs to be started as a separate container from the one running the six6 code.
 
-本地开发/测试起一个 FalkorDB 容器：
+Start a FalkorDB container for local development/testing:
 
 ```bash
 docker run -d --name falkordb-memory -p 6379:6379 \
-  -e REDIS_ARGS="--requirepass <你的密码>" \
+  -e REDIS_ARGS="--requirepass <your_password>" \
   falkordb/falkordb:latest
 ```
 
-生产环境是 `requirepass` 鉴权模式，也就是说 FalkorDB 要求密码才能连接；本地跑集成测试或手动验证时最好复现同样的鉴权配置，而不要图省事跑一个不设密码的实例，否则测不出 NOAUTH 相关的问题（见下方“已知问题”一节）。
+The production environment uses the `requirepass` authentication mode, meaning FalkorDB requires a password to connect. When running integration tests or manually verifying locally, it is best to replicate the same authentication configuration instead of conveniently running an instance without a password, otherwise you won't be able to catch NOAUTH-related issues (see the "Known Issues" section below).
 
-连接用到的环境变量（对应 `skill-memory/scripts/memory_ingestion_executor.py` 的 argparse 定义）：
+Environment variables used for connection (corresponding to the argparse definitions in `skill-memory/scripts/memory_ingestion_executor.py`):
 
-| 环境变量 | 默认值 | 说明 |
+| Environment Variable | Default Value | Description |
 | --- | --- | --- |
-| `FALKORDB_HOST` | `localhost` | FalkorDB 主机地址 |
-| `FALKORDB_PORT` | `6379` | FalkorDB 端口 |
-| `FALKORDB_USER` | 无（None） | FalkorDB ACL 用户名，多数部署不需要 |
-| `FALKORDB_PASS` | 无（None） | FalkorDB 密码，对应上面 `docker run` 里 `REDIS_ARGS="--requirepass <你的密码>"` 设置的那个密码 |
-| `SIX6_FALKOR_GRAPH` | `FreyaGraph` | 生产用的图名称 |
+| `FALKORDB_HOST` | `localhost` | FalkorDB host address |
+| `FALKORDB_PORT` | `6379` | FalkorDB port |
+| `FALKORDB_USER` | None | FalkorDB ACL username, not needed for most deployments |
+| `FALKORDB_PASS` | None | FalkorDB password, corresponding to the password set in `REDIS_ARGS="--requirepass <your_password>"` in the `docker run` command above |
+| `SIX6_FALKOR_GRAPH` | `FreyaGraph` | The graph name used in production |
 
-示例：
+Example:
 
 ```bash
 export FALKORDB_HOST=localhost
@@ -153,7 +155,7 @@ python3 skill-memory/scripts/memory_ingestion_executor.py --base-dir demo
 
 MIT License. See [LICENSE](LICENSE) for details.
 
-## Development
+## 🛠️ Development
 
 Minimum supported Python: **3.11** (matches Debian bookworm's default `python3`, which is what the production container ships). Avoid syntax that requires newer versions, e.g. backslashes inside f-string expressions (PEP 701, Python 3.12+).
 
@@ -166,44 +168,44 @@ python -m pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest
 ```
 
-### 单元测试（默认，不需要真实 FalkorDB）
+### Unit Tests (Default, No Real FalkorDB Required)
 
-`python -m pytest`（或直接 `pytest`）跑的是所有**没有**标 `integration` marker 的用例，全部通过 mock 掉 FalkorDB 的方式验证逻辑，不需要本地起任何服务。CI（`.github/workflows/ci.yml`）目前也只跑这个范围：`pip install -r requirements.txt -r requirements-dev.txt` 然后 `python -m pytest`，**不包含真实 FalkorDB 的集成测试**。
+`python -m pytest` (or just `pytest`) runs all test cases **without** the `integration` marker, verifying logic entirely by mocking FalkorDB. No local services are required. The CI (`.github/workflows/ci.yml`) currently also only runs this scope: `pip install -r requirements.txt -r requirements-dev.txt` then `python -m pytest`, **excluding integration tests with a real FalkorDB**.
 
-`pytest.ini` 里设置了 `addopts = -m "not integration"`，所以默认执行会自动跳过集成测试，不需要额外加参数，也不需要改 CI 配置。
+`pytest.ini` has `addopts = -m "not integration"` set, so the default execution automatically skips integration tests. No extra arguments or CI configuration changes are needed.
 
-### 集成测试（需要真实 FalkorDB，默认跳过）
+### Integration Tests (Requires Real FalkorDB, Skipped by Default)
 
-`tests/test_memory_ingestion_integration.py` 是直接对接真实 FalkorDB（不 mock）的集成测试，标了 `pytest.mark.integration`，覆盖 5 个场景：
+`tests/test_memory_ingestion_integration.py` is an integration test that connects directly to a real FalkorDB (no mocking). It is marked with `pytest.mark.integration` and covers 5 scenarios:
 
-1. 多行 content 的 round-trip（写入再读出内容一致）
-2. 查询不存在的 `candidate_id`，确认返回 `None`
-3. 未设置的可选字段读回是 `None` 而不是空字符串
-4. `maturity`（int 类型）保真，不会被序列化成字符串等
-5. 连续 `ingest` 两次同一条数据，不产生重复节点
+1. Round-trip of multi-line content (content written and then read back is identical)
+2. Querying a non-existent `candidate_id` and confirming it returns `None`
+3. Unset optional fields read back as `None` instead of empty strings
+4. Fidelity of `maturity` (int type), ensuring it is not serialized into a string, etc.
+5. Consecutive `ingest` of the same data twice does not produce duplicate nodes
 
-手动运行：
+To run manually:
 
 ```bash
 pytest -m integration
 ```
 
-需要真实 FalkorDB 在跑（见上方“FalkorDB 服务”一节），连接参数同样用 `FALKORDB_HOST` / `FALKORDB_PORT` / `FALKORDB_USER` / `FALKORDB_PASS` 传入。连不上时（`RedisError` / `ConnectionError` / `OSError` / `RuntimeError`，包括 NOAUTH）会 `pytest.skip` 优雅跳过，不会报错炸掉——所以本地没有 FalkorDB 时执行 `pytest -m integration` 也是安全的，只是测不出真实通信层的问题。
+Requires a real FalkorDB to be running (see the "FalkorDB Service" section above), and connection parameters are similarly passed via `FALKORDB_HOST` / `FALKORDB_PORT` / `FALKORDB_USER` / `FALKORDB_PASS`. When unable to connect (`RedisError` / `ConnectionError` / `OSError` / `RuntimeError`, including NOAUTH), it will elegantly skip via `pytest.skip` instead of throwing an error and blowing up—so it's safe to run `pytest -m integration` even when there's no FalkorDB locally, it just won't be able to test actual communication layer issues.
 
-集成测试用独立的测试图 `six6IntegrationTestGraph`（可用环境变量 `SIX6_TEST_FALKOR_GRAPH` 覆盖），不会碰生产用的 `FreyaGraph`；每个测试的 `candidate_id` 都带随机 uuid 后缀避免相互冲突，teardown 时会自动删除自建节点。
+The integration tests use an independent test graph `six6IntegrationTestGraph` (can be overridden with the `SIX6_TEST_FALKOR_GRAPH` environment variable) and won't touch the production `FreyaGraph`. Every `candidate_id` in the tests has a random uuid suffix to avoid conflicts, and self-created nodes are automatically deleted during teardown.
 
-**为什么普通单元测试测不出真实通信层的 bug**：单元测试 mock 掉的是 `FalkorGraphBackend` 与 FalkorDB 之间的实际网络/协议交互（Redis 协议的响应解析、认证握手），只验证"给定某个返回值，上层逻辑处理是否正确"，天然假设底层通信是可靠且已认证成功的。真正的解析错位、鉴权状态误判这类 bug，恰恰发生在这一层被 mock 掉的地方，所以"单元测试全绿"不等于"跟真实 FalkorDB 通信没问题"，必须靠集成测试或手动跑真实容器验证。
+**Why normal unit tests can't catch real communication layer bugs**: The unit tests mock the actual network/protocol interaction between `FalkorGraphBackend` and FalkorDB (Redis protocol response parsing, authentication handshakes), only verifying "given a certain return value, whether the upper-level logic processing is correct", naturally assuming the underlying communication is reliable and authenticated successfully. The real parsing misalignments or authentication state misjudgments happen exactly in this mocked layer, so "unit tests all green" does not equal "communication with real FalkorDB is fine". You must rely on integration tests or manual verification against a real container.
 
-## 🐛 已知问题 / 踩坑记录
+## 🐛 Known Issues / Pitfall Records
 
-以下两个问题都是**在真实 FalkorDB 容器环境下手动验证时才发现的**，普通单元测试（mock 掉 FalkorDB）没有测出来：
+The following two issues were **only discovered during manual verification against a real FalkorDB container environment**, and were not caught by normal unit tests (which mock FalkorDB):
 
-1. **FalkorDB 通信解析错位导致重复节点**：对 FalkorDB 返回结果的文本/字段解析逻辑存在错位，导致同一条记录被重复写入图数据库，产生重复节点。单元测试里因为返回值是手工构造的 mock 数据，覆盖不到真实响应格式的边界情况，没有暴露这个问题。
-2. **NOAUTH 被误判成功**：连接 FalkorDB 时如果认证失败（NOAUTH），错误处理逻辑没有正确识别这种失败状态，导致后续流程误以为连接/写入已经成功。同样，mock 场景下认证握手是被跳过的，测不出这类问题。
+1. **FalkorDB communication parsing misalignment leading to duplicate nodes**: There was a misalignment in the text/field parsing logic for FalkorDB return results, causing the same record to be written repeatedly into the graph database, generating duplicate nodes. In the unit tests, because the return values were manually constructed mock data, it couldn't cover edge cases in the real response format, so this issue was not exposed.
+2. **NOAUTH falsely judged as successful**: When connecting to FalkorDB, if authentication fails (NOAUTH), the error handling logic did not correctly identify this failure state, leading subsequent processes to mistakenly believe the connection/write had already succeeded. Similarly, the authentication handshake is skipped under mock scenarios, so this type of issue cannot be tested.
 
-**给未来贡献者的提醒**：修改 `skill-memory/scripts/memory_ingestion_executor.py` 或 `FalkorGraphBackend` 相关代码时，不要只看单元测试是否全绿就合并。请至少做以下之一：
+**A reminder to future contributors**: When modifying code related to `skill-memory/scripts/memory_ingestion_executor.py` or `FalkorGraphBackend`, do not just merge it because the unit tests are all green. Please do at least one of the following:
 
-- 起一个本地 FalkorDB 容器（见上方命令），手动跑一次相关脚本验证真实行为；
-- 跑一次 `pytest -m integration`，确认 `tests/test_memory_ingestion_integration.py` 的 5 个场景仍然通过。
+- Start a local FalkorDB container (see commands above) and manually run the related scripts once to verify real behavior;
+- Run `pytest -m integration` once to confirm the 5 scenarios in `tests/test_memory_ingestion_integration.py` still pass.
 
-单元测试全绿只能说明业务逻辑本身没退化，不能说明跟真实 FalkorDB 的通信层没问题。
+All green unit tests only prove the business logic itself hasn't degraded; they cannot prove that there are no issues with the communication layer against a real FalkorDB.
