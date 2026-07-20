@@ -45,7 +45,18 @@ This reads only `memory/approved_decisions/latest-approved-seeds.jsonl`, validat
 `candidate_id`, then creates or updates `memory-node.v2` nodes. Each run writes an
 auditable JSONL report under `memory/ingestion/`.
 
-### 4. Audit Existing FalkorDB Memory Nodes
+### 4. Query Memory Nodes (read-only)
+Gives the runtime agent keyword/attribute search over `(:Memory)` nodes without
+any embedding provider. Connection via `FALKORDB_HOST/PORT/USER/PASS`; graph name
+read from `SIX6_FALKOR_GRAPH` (errors out if unset).
+
+```bash
+python3 scripts/memory_query.py --keyword "偏好"          # substring match on topic/content
+python3 scripts/memory_query.py --recent 5                # newest by ingested_at
+python3 scripts/memory_query.py --category fact --format json
+```
+
+### 5. Audit Existing FalkorDB Memory Nodes
 Before cutting over a historical graph, export current `(:Memory)` node
 properties to JSONL and run:
 

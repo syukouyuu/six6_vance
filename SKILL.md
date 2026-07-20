@@ -19,6 +19,19 @@ see [distribution/SKILL.md](distribution/SKILL.md).
 
 Both scripts default `--base-dir` to `.`; always pass the real base dir explicitly.
 
+- **You need a long-term memory that isn't in `MEMORY.md`** (a past decision, fact,
+  or preference someone asks about) → query the FalkorDB graph directly. This does
+  not depend on `memory_search` or any embedding provider:
+  ```bash
+  python3 skill-memory/scripts/memory_query.py --keyword "关键词"
+  python3 skill-memory/scripts/memory_query.py --recent 5
+  python3 skill-memory/scripts/memory_query.py --category fact --limit 10
+  ```
+  Connection settings come from the environment (`SIX6_FALKOR_GRAPH`,
+  `FALKORDB_HOST/PORT/USER/PASS`). If the script errors that `SIX6_FALKOR_GRAPH`
+  is unset, report it to Master instead of guessing a graph name. This script is
+  strictly read-only — never use it (or any other tool) to write to the graph.
+
 ## Read-Only Files
 
 `MEMORY.md` and `data/evolution.md` are outputs of the nightly `skill-meditation`
@@ -83,4 +96,4 @@ python3 skill-memory/scripts/memory-decision-router.py \
 Do not trigger meditation, advance topic-lab seed lifecycles, or run the memory
 approval/ingestion pipeline outside the approved forwarding flow above. Those are
 owned by cron-driven pulses and a human reviewer. Your job is otherwise limited to
-`remember.py` and `update_now.py`.
+`remember.py`, `update_now.py`, and read-only `memory_query.py`.
