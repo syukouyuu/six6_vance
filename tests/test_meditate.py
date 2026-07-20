@@ -68,13 +68,15 @@ class MeditateTests(unittest.TestCase):
                 pass
 
         def apply_defaults():
-            os.environ.update({"LLM_API_BASE": "http://mock", "LLM_MODEL": "mock", "LLM_API_KEY": "test"})
+            os.environ.update({"LLM_API_BASE": "http://mock", "LLM_MODEL": "mock", "LLM_API_KEY": "sk-secret-must-not-appear-in-logs"})
             return {"LLM_API_BASE", "LLM_MODEL", "LLM_API_KEY"}
 
         with patch.dict(os.environ, {}, clear=True), patch.object(meditate, "apply_env_defaults", side_effect=apply_defaults), patch.object(meditate, "setup_six6_logging", return_value=Logger()), patch.object(meditate, "run_meditation"), patch.object(sys, "argv", ["meditate.py", "--base-dir", ".", "--date", "2026-05-01"]):
             meditate.main()
 
-        self.assertIn("config_source=api_base:.env,model:.env,api_key:.env", "\n".join(messages))
+        joined = "\n".join(messages)
+        self.assertIn("config_source=api_base:.env,model:.env,api_key:.env", joined)
+        self.assertNotIn("sk-secret-must-not-appear-in-logs", joined)
 
     def test_main_fails_fast_without_llm_configuration(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(os.environ, {}, clear=True), patch.object(meditate, "apply_env_defaults", return_value=set()), patch.object(sys, "argv", ["meditate.py", "--base-dir", tmpdir]):
