@@ -143,7 +143,7 @@ docker run -d --name falkordb-memory -p 6379:6379 \
 | `FALKORDB_PORT` | `6379` | FalkorDB 端口 |
 | `FALKORDB_USER` | 无（None） | FalkorDB ACL 用户名，多数部署不需要 |
 | `FALKORDB_PASS` | 无（None） | FalkorDB 密码，对应上面 `docker run` 里 `REDIS_ARGS="--requirepass <你的密码>"` 设置的那个密码 |
-| `SIX6_FALKOR_GRAPH` | `FreyaGraph` | 生产用的图名称 |
+| `SIX6_FALKOR_GRAPH` | （必填，无默认值） | 生产用的图名称，未设置时入库脚本直接报错 |
 
 示例：
 

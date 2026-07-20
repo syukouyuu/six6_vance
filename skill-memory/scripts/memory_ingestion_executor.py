@@ -199,7 +199,6 @@ def ingestion_executor_main():
     parser = argparse.ArgumentParser(description="Ingest approved-decision.v2 JSONL into FalkorDB Memory nodes.")
     parser.add_argument("--base-dir", default=".", help="Base directory containing memory/approved_decisions/.")
     parser.add_argument("--input", help="Approved JSONL path. Defaults to memory/approved_decisions/latest-approved-seeds.jsonl.")
-    parser.add_argument("--graph", default=os.environ.get("SIX6_FALKOR_GRAPH", "FreyaGraph"), help="FalkorDB graph name.")
     parser.add_argument("--redis-host", default=os.environ.get("FALKORDB_HOST", "localhost"), help="FalkorDB host. Defaults to $FALKORDB_HOST.")
     parser.add_argument("--redis-port", type=int, default=int(os.environ.get("FALKORDB_PORT", "6379")), help="FalkorDB port. Defaults to $FALKORDB_PORT.")
     parser.add_argument("--redis-user", default=os.environ.get("FALKORDB_USER"), help="FalkorDB ACL username. Defaults to $FALKORDB_USER.")
@@ -207,9 +206,13 @@ def ingestion_executor_main():
     parser.add_argument("--ingested-at", help="UTC ingestion timestamp, useful for reproducible tests.")
     args = parser.parse_args()
 
+    graph_name = os.environ.get("SIX6_FALKOR_GRAPH")
+    if not graph_name:
+        parser.error("environment variable SIX6_FALKOR_GRAPH must be set to the target graph name")
+
     input_path = args.input or default_approved_path(args.base_dir)
     backend = FalkorGraphBackend(
-        graph=args.graph,
+        graph=graph_name,
         host=args.redis_host,
         port=args.redis_port,
         username=args.redis_user,

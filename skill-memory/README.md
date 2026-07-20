@@ -38,7 +38,7 @@ via `apt-get install redis-tools` or equivalent). It is invoked directly as a
 subprocess, so make sure it's installed wherever this script actually runs.
 
 ```bash
-python3 scripts/memory_ingestion_executor.py --base-dir /path/to/agent/root --graph FreyaGraph
+python3 scripts/memory_ingestion_executor.py --base-dir /path/to/agent/root  # 图名固定读 SIX6_FALKOR_GRAPH，未设置则报错
 ```
 This reads only `memory/approved_decisions/latest-approved-seeds.jsonl`, validates
 `approved-decision.v2`, looks up existing FalkorDB `(:Memory)` nodes by

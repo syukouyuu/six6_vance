@@ -145,7 +145,7 @@ Environment variables used for connection (corresponding to the argparse definit
 | `FALKORDB_PORT` | `6379` | FalkorDB port |
 | `FALKORDB_USER` | None | FalkorDB ACL username, not needed for most deployments |
 | `FALKORDB_PASS` | None | FalkorDB password, corresponding to the password set in `REDIS_ARGS="--requirepass <your_password>"` in the `docker run` command above |
-| `SIX6_FALKOR_GRAPH` | `FreyaGraph` | The graph name used in production |
+| `SIX6_FALKOR_GRAPH` | (required, no default) | The production graph name; the ingestion script errors out if unset |
 
 Example:
 
