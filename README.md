@@ -156,6 +156,14 @@ export FALKORDB_PASS=your-local-password
 python3 skill-memory/scripts/memory_ingestion_executor.py --base-dir demo
 ```
 
+## 🔢 Versioning
+
+Three-segment `vMAJOR.MINOR.PATCH`, but not strict semver:
+
+- **MAJOR** — project generation: 1.x was the upstream open-source six6 (ythx-101); 2.x is this refactored fork. Reserved for project-level rewrites.
+- **MINOR** — normal upgrades: new features and behavior changes. Breaking changes are allowed here and are flagged with a ⚠️ upgrade warning in the release notes.
+- **PATCH** — pure bug fixes, always safe to upgrade without reading the notes.
+
 ## 📄 License
 
 MIT License. See [LICENSE](LICENSE) for details.

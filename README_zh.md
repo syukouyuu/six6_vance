@@ -154,6 +154,14 @@ export FALKORDB_PASS=your-local-password
 python3 skill-memory/scripts/memory_ingestion_executor.py --base-dir demo
 ```
 
+## 🔢 版本号约定
+
+三段式 `vMAJOR.MINOR.PATCH`，但不严格遵循 semver：
+
+- **MAJOR** — 项目代际：1.x 是上游开源项目 six6（ythx-101）；2.x 是本重构分支。只留给项目级重写。
+- **MINOR** — 正常升级：新功能、行为变更。允许包含破坏性变更，但必须在 release notes 里以 ⚠️ 升级警告标出。
+- **PATCH** — 纯 bug 修复，可直接升级，无需阅读 notes。
+
 ## 📄 许可证
 
 MIT License. 详情请参阅 [LICENSE](LICENSE) 文件。
